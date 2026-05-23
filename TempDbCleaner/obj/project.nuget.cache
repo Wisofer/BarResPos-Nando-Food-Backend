@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "dgSpecHash": "2dvG26Y/h4g=",
+  "success": true,
+  "projectFilePath": "/home/william/Documentos/aplicaciones/BarRestPOS/TempDbCleaner/TempDbCleaner.csproj",
+  "expectedPackageFiles": [
+    "/home/william/.nuget/packages/microsoft.extensions.dependencyinjection.abstractions/9.0.0/microsoft.extensions.dependencyinjection.abstractions.9.0.0.nupkg.sha512",
+    "/home/william/.nuget/packages/microsoft.extensions.logging.abstractions/9.0.0/microsoft.extensions.logging.abstractions.9.0.0.nupkg.sha512",
+    "/home/william/.nuget/packages/npgsql/10.0.2/npgsql.10.0.2.nupkg.sha512"
+  ],
+  "logs": []
+}

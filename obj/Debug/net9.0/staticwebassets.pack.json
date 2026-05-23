@@ -1,0 +1,53 @@
+{
+  "Files": [
+    {
+      "Id": "/home/william/Documentos/aplicaciones/BarRestPOS/wwwroot/css/tailwind.css",
+      "PackagePath": "staticwebassets/css/tailwind.css"
+    },
+    {
+      "Id": "/home/william/Documentos/aplicaciones/BarRestPOS/wwwroot/images/logo.jpeg",
+      "PackagePath": "staticwebassets/images/logo.jpeg"
+    },
+    {
+      "Id": "/home/william/Documentos/aplicaciones/BarRestPOS/wwwroot/js/caja/index.js",
+      "PackagePath": "staticwebassets/js/caja/index.js"
+    },
+    {
+      "Id": "/home/william/Documentos/aplicaciones/BarRestPOS/wwwroot/js/mesas/index.js",
+      "PackagePath": "staticwebassets/js/mesas/index.js"
+    },
+    {
+      "Id": "/home/william/Documentos/aplicaciones/BarRestPOS/wwwroot/js/modal.js",
+      "PackagePath": "staticwebassets/js/modal.js"
+    },
+    {
+      "Id": "/home/william/Documentos/aplicaciones/BarRestPOS/wwwroot/sounds/error.mp3",
+      "PackagePath": "staticwebassets/sounds/error.mp3"
+    },
+    {
+      "Id": "/home/william/Documentos/aplicaciones/BarRestPOS/wwwroot/sounds/success.mp3",
+      "PackagePath": "staticwebassets/sounds/success.mp3"
+    },
+    {
+      "Id": "obj/Debug/net9.0/staticwebassets/msbuild.BarRestPOS.Microsoft.AspNetCore.StaticWebAssetEndpoints.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssetEndpoints.props"
+    },
+    {
+      "Id": "obj/Debug/net9.0/staticwebassets/msbuild.BarRestPOS.Microsoft.AspNetCore.StaticWebAssets.props",
+      "PackagePath": "build\\Microsoft.AspNetCore.StaticWebAssets.props"
+    },
+    {
+      "Id": "obj/Debug/net9.0/staticwebassets/msbuild.build.BarRestPOS.props",
+      "PackagePath": "build\\BarRestPOS.props"
+    },
+    {
+      "Id": "obj/Debug/net9.0/staticwebassets/msbuild.buildMultiTargeting.BarRestPOS.props",
+      "PackagePath": "buildMultiTargeting\\BarRestPOS.props"
+    },
+    {
+      "Id": "obj/Debug/net9.0/staticwebassets/msbuild.buildTransitive.BarRestPOS.props",
+      "PackagePath": "buildTransitive\\BarRestPOS.props"
+    }
+  ],
+  "ElementsToRemove": []
+}
