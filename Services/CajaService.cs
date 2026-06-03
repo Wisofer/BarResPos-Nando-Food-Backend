@@ -201,6 +201,10 @@ public class CajaService : ICajaService
         cierre.FechaHoraCierre = DateTime.Now;
 
         await _context.SaveChangesAsync();
+
+        // Generar un respaldo automático al realizar el cierre de caja
+        BarRestPOS.Utils.BackupHelper.CrearRespaldo("cierre");
+
         return cierre;
     }
 

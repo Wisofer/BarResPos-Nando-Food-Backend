@@ -32,16 +32,20 @@ builder.Services.AddSwaggerGen(options =>
 // Configurar URLs en minúsculas
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 
-// Configurar Entity Framework con PostgreSQL (Neon)
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (string.IsNullOrEmpty(connectionString))
+// Configurar Entity Framework con SQLite en ruta persistente de AppData
+string appDataFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "BarRestPOS");
+if (!Directory.Exists(appDataFolder))
 {
-    throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+    Directory.CreateDirectory(appDataFolder);
 }
+string persistentDbPath = Path.Combine(appDataFolder, "barrestpos.db");
+string connectionString = $"Data Source={persistentDbPath}";
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    options.UseNpgsql(connectionString);
+    options.UseSqlite(connectionString);
+    // Ignorar advertencia de cambios pendientes en el modelo (común en SQLite local de desarrollo al aplicar migraciones en el arranque)
+    options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
 });
 
 // Configurar CORS para frontend React (Vite/local y orígenes configurados)
@@ -169,11 +173,19 @@ using (var scope = app.Services.CreateScope())
     
             try
             {
+                // Asegurar la existencia e inyección de migraciones automáticas en la base de datos local SQLite de AppData
+                logger.LogInformation("Aplicando migraciones automáticas en SQLite local en AppData...");
+                dbContext.Database.Migrate();
+                logger.LogInformation("Base de datos SQLite lista y actualizada.");
+
+                // Realizar un respaldo automático rápido al iniciar el sistema
+                BarRestPOS.Utils.BackupHelper.CrearRespaldo("inicio");
+
                 // Crear usuario admin si no existe (PRIMERO, para poder hacer login)
                 InicializarUsuarioAdmin.CrearAdminSiNoExiste(dbContext, logger);
 
-                // El administrador creará manualmente mesas, productos y categorías
-                // (El código de inicialización automática fue eliminado)
+                // Inicializar ubicaciones, mesas y categorías por defecto para la primera experiencia (demo o primer uso)
+                InicializarDatosDemostracion.Inicializar(dbContext, logger);
                 
                 // COMENTADO: El administrador creará manualmente los servicios/productos
                 // Inicializar servicios si no existen (opcional, puede fallar si la tabla no existe)
@@ -214,9 +226,24 @@ using (var scope = app.Services.CreateScope())
             "Tipo de cambio dólar a córdoba (C$ por $1)"
         );
         configuracionService.CrearSiNoExiste(
+            "Tickets:NombreRestaurante",
+            "NANDO'S FOOD",
+            "Nombre comercial del restaurante/bar para los tickets impresos y digitales"
+        );
+        configuracionService.CrearSiNoExiste(
             SD.ConfigClavePinCancelacionPedidos,
             "0000",
             "PIN para autorizar cancelación de pedidos (cambiar en producción)"
+        );
+        configuracionService.CrearSiNoExiste(
+            "Mesas:HabilitarVistaZonas",
+            "true",
+            "Habilitar la vista de zonas en mesas (true/false)"
+        );
+        configuracionService.CrearSiNoExiste(
+            "Mesas:HabilitarVistaPlano",
+            "true",
+            "Habilitar la vista de plano físico en mesas (true/false)"
         );
 
         // El administrador creará manualmente las categorías y ubicaciones de inventario
@@ -279,6 +306,20 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseStaticFiles();
+
+// Mapear la carpeta de subidas persistente en AppData para que sirva archivos estáticos (Logo e imágenes de productos)
+string persistentUploadsDir = Path.Combine(appDataFolder, "uploads");
+if (!Directory.Exists(persistentUploadsDir))
+{
+    Directory.CreateDirectory(persistentUploadsDir);
+}
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(persistentUploadsDir),
+    RequestPath = "/uploads"
+});
 app.UseRouting();
 
 app.UseCors("FrontendCors");

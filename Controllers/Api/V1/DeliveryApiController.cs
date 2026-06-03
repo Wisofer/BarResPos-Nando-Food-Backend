@@ -461,25 +461,81 @@ public class DeliveryApiController : BaseApiController
             ? "cliente"
             : pedido.DeliveryClienteNombre.Trim();
         var fecha = pedido.FechaCreacion.ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture);
-        var totalCordobas = $"C$ {pedido.Monto:N2}";
 
-        var tokenPdf = PdfTokenHelper.GenerarTokenTemporal(pedido.Id, HttpContext.RequestServices.GetRequiredService<IConfiguration>());
-        var enlacePdf = $"{Request.Scheme}://{Request.Host}/api/v1/public/facturas/{pedido.Id}/pdf?token={tokenPdf}";
+        // Cargar pedido completo con items y opciones para el ticket
+        var pedidoCompleto = _context.Facturas
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(f => f.FacturaServicios).ThenInclude(i => i.Servicio)
+            .Include(f => f.FacturaServicios).ThenInclude(i => i.OpcionesSeleccionadas)
+            .FirstOrDefault(f => f.Id == pedido.Id);
+
+        if (pedidoCompleto == null)
+            return FailResponse("No se pudieron cargar los detalles del pedido.");
+
+        var pagos = _context.Pagos
+            .AsNoTracking()
+            .Include(p => p.PagoFacturas)
+            .Where(p => p.FacturaId == pedido.Id || p.PagoFacturas.Any(pf => pf.FacturaId == pedido.Id))
+            .OrderByDescending(p => p.FechaPago)
+            .ToList();
+
+        var subtotal = pedidoCompleto.Monto;
+        var descuento = pagos.Sum(p => CobroFacturaHelper.DescuentoAtribuidoAPedido(p, pedido.Id));
+        var total = subtotal - descuento;
+        var tipoPago = pagos.FirstOrDefault()?.TipoPago ?? "Efectivo";
+
+        var itemsText = new System.Text.StringBuilder();
+        foreach (var it in pedidoCompleto.FacturaServicios)
+        {
+            var qty = it.Cantidad;
+            var name = (it.Servicio?.Nombre ?? "Producto").Trim();
+            var price = it.PrecioUnitario;
+            var linePt = it.Monto;
+            
+            var line = $"• {qty}x {name} (C$ {price:N2}) -> C$ {linePt:N2}";
+            var opcionesResumen = ProductoOpcionesLineaHelper.OpcionesResumen(it.OpcionesSeleccionadas);
+            if (!string.IsNullOrWhiteSpace(opcionesResumen))
+            {
+                line += $" ({opcionesResumen})";
+            }
+            itemsText.AppendLine(line);
+        }
+
+        var subtotalStr = $"C$ {subtotal:N2}";
+        var totalStr = $"C$ {total:N2}";
+        var descuentoStr = descuento > 0.001m ? $"*Descuento:* -C$ {descuento:N2}\n" : "";
+        var mes = pedido.FechaCreacion.ToString("MMMM", new CultureInfo("es-NI"));
+        var nombreRestaurante = _configuracionService.ObtenerValor("Tickets:NombreRestaurante") ?? "NANDO'S FOOD";
 
         try
         {
             var mensaje = plantilla.Mensaje;
+            mensaje = mensaje.Replace("{NombreRestaurante}", nombreRestaurante, StringComparison.Ordinal);
             mensaje = mensaje.Replace("{NombreCliente}", clienteNombre, StringComparison.Ordinal);
             mensaje = mensaje.Replace("{CodigoPedido}", pedido.Numero, StringComparison.Ordinal);
-            mensaje = mensaje.Replace("{TotalCordobas}", totalCordobas, StringComparison.Ordinal);
             mensaje = mensaje.Replace("{Fecha}", fecha, StringComparison.Ordinal);
-            mensaje = mensaje.Replace("{EnlacePDF}", enlacePdf, StringComparison.Ordinal);
+            
+            mensaje = mensaje.Replace("{DetallePedido}", itemsText.ToString(), StringComparison.Ordinal);
+            mensaje = mensaje.Replace("{Subtotal}", subtotalStr, StringComparison.Ordinal);
+            mensaje = mensaje.Replace("{Descuento}", descuentoStr, StringComparison.Ordinal);
+            mensaje = mensaje.Replace("{Total}", totalStr, StringComparison.Ordinal);
+            mensaje = mensaje.Replace("{MetodoPago}", tipoPago, StringComparison.Ordinal);
 
+            // Retrocompatibilidad total con plantillas antiguas
+            mensaje = mensaje.Replace("{NumeroFactura}", pedido.Numero, StringComparison.Ordinal);
+            mensaje = mensaje.Replace("{Monto}", totalStr, StringComparison.Ordinal);
+            mensaje = mensaje.Replace("{TotalCordobas}", totalStr, StringComparison.Ordinal);
+            mensaje = mensaje.Replace("{Mes}", mes, StringComparison.Ordinal);
+            mensaje = mensaje.Replace("{Estado}", pedido.Estado, StringComparison.Ordinal);
+            mensaje = mensaje.Replace("{FechaCreacion}", fecha, StringComparison.Ordinal);
+            mensaje = mensaje.Replace("{EnlacePDF}", "", StringComparison.Ordinal); // Reemplazado por vacío para evitar enlaces externos
+
+            // Verificación de placeholders no resueltos
             if (mensaje.Contains("{NombreCliente}", StringComparison.Ordinal)
                 || mensaje.Contains("{CodigoPedido}", StringComparison.Ordinal)
-                || mensaje.Contains("{TotalCordobas}", StringComparison.Ordinal)
-                || mensaje.Contains("{Fecha}", StringComparison.Ordinal)
-                || mensaje.Contains("{EnlacePDF}", StringComparison.Ordinal))
+                || mensaje.Contains("{Total}", StringComparison.Ordinal)
+                || mensaje.Contains("{DetallePedido}", StringComparison.Ordinal))
             {
                 return FailResponse("Faltan datos para resolver placeholders de la plantilla.", StatusCodes.Status400BadRequest);
             }

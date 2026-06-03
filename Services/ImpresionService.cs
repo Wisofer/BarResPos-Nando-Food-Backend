@@ -1,8 +1,11 @@
 using System.Net;
+using System.Linq;
+using BarRestPOS.Data;
 using BarRestPOS.Models.Entities;
 using BarRestPOS.Services.IServices;
 using BarRestPOS.Utils;
 using Microsoft.Extensions.Configuration;
+using Microsoft.EntityFrameworkCore;
 
 namespace BarRestPOS.Services;
 
@@ -12,19 +15,42 @@ namespace BarRestPOS.Services;
 public class ImpresionService : IImpresionService
 {
     private readonly IConfiguration _configuration;
+    private readonly ApplicationDbContext _context;
 
-    public ImpresionService(IConfiguration configuration)
+    public ImpresionService(IConfiguration configuration, ApplicationDbContext context)
     {
         _configuration = configuration;
+        _context = context;
     }
     private const string NOMBRE_RESTAURANTE = "Bar Rest POS";
 
-    /// <summary>Si <c>Tickets:LogoUrl</c> es una URL absoluta (p. ej. CDN/R2), inserta img; si no, vacío (evita 404 a rutas locales inexistentes).</summary>
+    /// <summary>Resuelve el logo desde la base de datos o appsettings.json y retorna el tag img.</summary>
     private string BuildLogoImgTag()
     {
-        var url = _configuration["Tickets:LogoUrl"]?.Trim();
+        var url = _context.Configuraciones
+            .AsNoTracking()
+            .Where(c => c.Clave == "Tickets:LogoUrl")
+            .Select(c => c.Valor)
+            .FirstOrDefault()?.Trim();
+
+        if (string.IsNullOrEmpty(url))
+        {
+            url = _configuration["Tickets:LogoUrl"]?.Trim();
+        }
+
         if (string.IsNullOrEmpty(url))
             return "";
+
+        if (url.StartsWith("/"))
+        {
+            var baseUrl = _configuration["App:PublicBaseUrl"]?.Trim();
+            if (string.IsNullOrEmpty(baseUrl))
+            {
+                baseUrl = "http://localhost:5000";
+            }
+            url = baseUrl.TrimEnd('/') + url;
+        }
+
         return $"<img src=\"{WebUtility.HtmlEncode(url)}\" alt=\"Logo\" class=\"logo\" />";
     }
 
@@ -381,9 +407,13 @@ public class ImpresionService : IImpresionService
         }
         
         .logo {
-            max-width: 60mm;
+            max-width: 140px;
+            max-height: 60px;
+            width: auto;
             height: auto;
-            margin-bottom: 8px;
+            object-fit: contain;
+            margin: 0 auto 8px;
+            display: block;
         }
         
         .nombre-restaurante {

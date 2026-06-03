@@ -230,6 +230,68 @@ public class ConfiguracionesApiController : BaseApiController
 
         return OkResponse(new { plantilla.Id, plantilla.EsDefault }, "Plantilla marcada como predeterminada");
     }
+
+    [HttpPost("logo")]
+    [Authorize(Policy = "Administrador")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> SubirLogo([FromForm] IFormFile archivo)
+    {
+        if (archivo == null || archivo.Length <= 0)
+            return FailResponse("Debe adjuntar una imagen válida.");
+        if (archivo.Length > 5 * 1024 * 1024)
+            return FailResponse("La imagen no debe superar 5MB.");
+
+        var tiposPermitidos = new[] { "image/jpeg", "image/png", "image/webp" };
+        if (!tiposPermitidos.Contains((archivo.ContentType ?? string.Empty).ToLowerInvariant()))
+            return FailResponse("Formato no permitido. Use JPG, PNG o WEBP.");
+
+        var appDataPath = System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData), "BarRestPOS");
+        var uploadsFolder = System.IO.Path.Combine(appDataPath, "uploads", "logo");
+        if (!System.IO.Directory.Exists(uploadsFolder))
+        {
+            System.IO.Directory.CreateDirectory(uploadsFolder);
+        }
+
+        var extension = System.IO.Path.GetExtension(archivo.FileName);
+        if (string.IsNullOrEmpty(extension)) extension = ".png";
+        var fileName = $"logo_{DateTime.Now:yyyyMMdd_HHmmss}{extension}";
+        var filePath = System.IO.Path.Combine(uploadsFolder, fileName);
+
+        await using (var fileStream = new System.IO.FileStream(filePath, System.IO.FileMode.Create))
+        {
+            await archivo.CopyToAsync(fileStream);
+        }
+
+        var relativeUrl = $"/uploads/logo/{fileName}";
+
+        var config = _context.Configuraciones.FirstOrDefault(c => c.Clave == "Tickets:LogoUrl");
+        if (config == null)
+        {
+            config = new Configuracion
+            {
+                Clave = "Tickets:LogoUrl",
+                Valor = relativeUrl,
+                Descripcion = "URL relativa para el logo de los tickets (impresión y PDF)",
+                FechaCreacion = DateTime.Now,
+                FechaActualizacion = DateTime.Now,
+                UsuarioActualizacion = User.Identity?.Name
+            };
+            _context.Configuraciones.Add(config);
+        }
+        else
+        {
+            config.Valor = relativeUrl;
+            config.FechaActualizacion = DateTime.Now;
+            config.UsuarioActualizacion = User.Identity?.Name;
+        }
+
+        _context.SaveChanges();
+
+        return OkResponse(new
+        {
+            LogoUrl = relativeUrl
+        }, "Logo subido y configurado correctamente.");
+    }
 }
 
 public class UpdateTipoCambioRequest

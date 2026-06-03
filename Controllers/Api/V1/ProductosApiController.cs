@@ -270,14 +270,24 @@ public class ProductosApiController : BaseApiController
         if (!tiposPermitidos.Contains((archivo.ContentType ?? string.Empty).ToLowerInvariant()))
             return FailResponse("Formato no permitido. Use JPG, PNG o WEBP.");
 
-        await using var stream = archivo.OpenReadStream();
-        var contentType = string.IsNullOrWhiteSpace(archivo.ContentType) ? "image/jpeg" : archivo.ContentType;
-        var imageUrl = await _r2StorageService.UploadProductImageAsync(
-            producto.Id,
-            stream,
-            archivo.FileName,
-            contentType);
+        var appDataPath = System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData), "BarRestPOS");
+        var uploadsFolder = System.IO.Path.Combine(appDataPath, "uploads", "productos");
+        if (!System.IO.Directory.Exists(uploadsFolder))
+        {
+            System.IO.Directory.CreateDirectory(uploadsFolder);
+        }
 
+        var extension = System.IO.Path.GetExtension(archivo.FileName);
+        if (string.IsNullOrEmpty(extension)) extension = ".jpg";
+        var fileName = $"producto_{producto.Id}_{System.Guid.NewGuid()}{extension}";
+        var filePath = System.IO.Path.Combine(uploadsFolder, fileName);
+
+        await using (var fileStream = new System.IO.FileStream(filePath, System.IO.FileMode.Create))
+        {
+            await archivo.CopyToAsync(fileStream);
+        }
+
+        var imageUrl = $"/uploads/productos/{fileName}";
         producto.ImagenUrl = imageUrl;
         _context.SaveChanges();
 
@@ -313,7 +323,7 @@ public class ProductosApiController : BaseApiController
                 s.Id,
                 s.Codigo,
                 s.Nombre,
-                s.Categoria,
+                Categoria = s.CategoriaProducto != null ? s.CategoriaProducto.Nombre : s.Categoria,
                 s.PrecioCompra,
                 s.Precio,
                 s.Stock,

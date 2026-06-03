@@ -1,26 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "/home/william/Documentos/aplicaciones/BarRestPOS/BarRestPOS.csproj": {}
+    "C:\\Users\\william\\Music\\BarResPos-Nando-Food-Backend\\BarRestPOS.csproj": {}
   },
   "projects": {
-    "/home/william/Documentos/aplicaciones/BarRestPOS/BarRestPOS.csproj": {
+    "C:\\Users\\william\\Music\\BarResPos-Nando-Food-Backend\\BarRestPOS.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/william/Documentos/aplicaciones/BarRestPOS/BarRestPOS.csproj",
+        "projectUniqueName": "C:\\Users\\william\\Music\\BarResPos-Nando-Food-Backend\\BarRestPOS.csproj",
         "projectName": "BarRestPOS",
-        "projectPath": "/home/william/Documentos/aplicaciones/BarRestPOS/BarRestPOS.csproj",
-        "packagesPath": "/home/william/.nuget/packages/",
-        "outputPath": "/home/william/Documentos/aplicaciones/BarRestPOS/obj/",
+        "projectPath": "C:\\Users\\william\\Music\\BarResPos-Nando-Food-Backend\\BarRestPOS.csproj",
+        "packagesPath": "C:\\Users\\william\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\william\\Music\\BarResPos-Nando-Food-Backend\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/home/william/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\william\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
-          "/usr/lib/dotnet/library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -39,7 +38,7 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.100"
+        "SdkAnalysisLevel": "9.0.300"
       },
       "frameworks": {
         "net9.0": {
@@ -60,6 +59,10 @@
             "Microsoft.EntityFrameworkCore.Design": {
               "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
               "suppressParent": "All",
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Microsoft.EntityFrameworkCore.Sqlite": {
               "target": "Package",
               "version": "[9.0.0, )"
             },
@@ -99,7 +102,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/lib/dotnet/sdk/9.0.116/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.314/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

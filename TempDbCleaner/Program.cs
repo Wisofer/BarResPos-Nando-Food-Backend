@@ -389,7 +389,20 @@ class Program
                 }
 
                 // Crear plantilla por defecto de WhatsApp
-                var msgText = "Hola {NombreCliente},\n\nLe enviamos su factura del mes {Mes}.\n\n🔗 Descargar PDF:\n{EnlacePDF}\n\nGracias por su preferencia.";
+                var msgText = "*{NombreRestaurante} - TICKET DIGITAL*\n" +
+                              "==========================================\n" +
+                              "*Cliente:* {NombreCliente}\n" +
+                              "*Pedido:* {CodigoPedido}\n" +
+                              "*Fecha:* {Fecha}\n\n" +
+                              "*Detalle de tu Compra:*\n" +
+                              "{DetallePedido}" +
+                              "==========================================\n" +
+                              "*Subtotal:* {Subtotal}\n" +
+                              "{Descuento}" +
+                              "*Total a Pagar:* {Total}\n" +
+                              "*Método de Pago:* {MetodoPago}\n" +
+                              "==========================================\n" +
+                              "¡Muchas gracias por su preferencia!";
                 await using (var cmdWp = new NpgsqlCommand(
                     @"INSERT INTO ""PlantillasMensajeWhatsApp"" (""Nombre"", ""Mensaje"", ""Activa"", ""EsDefault"", ""FechaCreacion"")
                       VALUES ('Plantilla por Defecto', @msg, true, true, CURRENT_TIMESTAMP);", conn, tx))

@@ -11,26 +11,59 @@ public static class InicializarPlantillaWhatsApp
         try
         {
             // Verificar si ya existe una plantilla por defecto
-            if (context.PlantillasMensajeWhatsApp.Any(p => p.EsDefault))
+            var plantillaDefault = context.PlantillasMensajeWhatsApp.FirstOrDefault(p => p.EsDefault);
+            if (plantillaDefault != null)
             {
+                // Si la plantilla por defecto es la antigua (contiene Mes o EnlacePDF) o no tiene la nueva variable NombreRestaurante, la actualizamos
+                if (plantillaDefault.Mensaje.Contains("{Mes}") || plantillaDefault.Mensaje.Contains("{EnlacePDF}") || !plantillaDefault.Mensaje.Contains("{NombreRestaurante}"))
+                {
+                    logger.LogInformation("Actualizando plantilla de WhatsApp heredada a la nueva plantilla por defecto con NombreRestaurante...");
+                    plantillaDefault.Mensaje = "*{NombreRestaurante} - TICKET DIGITAL*\n" +
+                                              "==========================================\n" +
+                                              "*Cliente:* {NombreCliente}\n" +
+                                              "*Pedido:* {CodigoPedido}\n" +
+                                              "*Fecha:* {Fecha}\n\n" +
+                                              "*Detalle de tu Compra:*\n" +
+                                              "{DetallePedido}" +
+                                              "==========================================\n" +
+                                              "*Subtotal:* {Subtotal}\n" +
+                                              "{Descuento}" +
+                                              "*Total a Pagar:* {Total}\n" +
+                                              "*Método de Pago:* {MetodoPago}\n" +
+                                              "==========================================\n" +
+                                              "¡Muchas gracias por su preferencia!";
+                    plantillaDefault.FechaActualizacion = DateTime.Now;
+                    context.SaveChanges();
+                    logger.LogInformation("Plantilla de WhatsApp heredada actualizada correctamente.");
+                }
                 return;
             }
 
             logger.LogInformation("Creando plantilla por defecto de WhatsApp...");
 
-            var plantillaDefault = new PlantillaMensajeWhatsApp
+            var nuevaPlantillaDefault = new PlantillaMensajeWhatsApp
             {
                 Nombre = "Plantilla por Defecto",
-                Mensaje = "Hola {NombreCliente},\n\n" +
-                         "Le enviamos su factura del mes {Mes}.\n\n" +
-                         "🔗 Descargar PDF:\n{EnlacePDF}\n\n" +
-                         "Gracias por su preferencia.",
+                Mensaje = "*{NombreRestaurante} - TICKET DIGITAL*\n" +
+                          "==========================================\n" +
+                          "*Cliente:* {NombreCliente}\n" +
+                          "*Pedido:* {CodigoPedido}\n" +
+                          "*Fecha:* {Fecha}\n\n" +
+                          "*Detalle de tu Compra:*\n" +
+                          "{DetallePedido}" +
+                          "==========================================\n" +
+                          "*Subtotal:* {Subtotal}\n" +
+                          "{Descuento}" +
+                          "*Total a Pagar:* {Total}\n" +
+                          "*Método de Pago:* {MetodoPago}\n" +
+                          "==========================================\n" +
+                          "¡Muchas gracias por su preferencia!",
                 Activa = true,
                 EsDefault = true,
                 FechaCreacion = DateTime.Now
             };
 
-            context.PlantillasMensajeWhatsApp.Add(plantillaDefault);
+            context.PlantillasMensajeWhatsApp.Add(nuevaPlantillaDefault);
             context.SaveChanges();
 
             logger.LogInformation("Plantilla por defecto de WhatsApp creada correctamente.");
