@@ -227,7 +227,7 @@ using (var scope = app.Services.CreateScope())
         );
         configuracionService.CrearSiNoExiste(
             "Tickets:NombreRestaurante",
-            "NANDO'S FOOD",
+            "BarResPos",
             "Nombre comercial del restaurante/bar para los tickets impresos y digitales"
         );
         configuracionService.CrearSiNoExiste(

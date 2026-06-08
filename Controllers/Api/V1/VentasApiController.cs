@@ -134,7 +134,19 @@ public class VentasApiController : BaseApiController
         if (orden.MesaId.HasValue)
         {
             var mesa = _context.Mesas.FirstOrDefault(m => m.Id == orden.MesaId.Value);
-            if (mesa != null) mesa.Estado = SD.EstadoMesaLibre;
+            if (mesa != null) 
+            {
+                bool hayOtrasActivas = _context.Facturas.Any(f => 
+                    f.MesaId == mesa.Id && 
+                    f.Id != orden.Id && 
+                    f.Estado != SD.EstadoOrdenPagado && 
+                    f.Estado != "Cancelado");
+                
+                if (!hayOtrasActivas)
+                {
+                    mesa.Estado = SD.EstadoMesaLibre;
+                }
+            }
         }
 
         _context.SaveChanges();

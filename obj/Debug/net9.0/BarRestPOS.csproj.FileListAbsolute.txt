@@ -229,6 +229,7 @@ C:\Users\william\Music\BarResPos-Nando-Food-Backend\bin\Debug\net9.0\Mono.TextTe
 C:\Users\william\Music\BarResPos-Nando-Food-Backend\bin\Debug\net9.0\Npgsql.dll
 C:\Users\william\Music\BarResPos-Nando-Food-Backend\bin\Debug\net9.0\Npgsql.EntityFrameworkCore.PostgreSQL.dll
 C:\Users\william\Music\BarResPos-Nando-Food-Backend\bin\Debug\net9.0\QuestPDF.dll
+C:\Users\william\Music\BarResPos-Nando-Food-Backend\bin\Debug\net9.0\SixLabors.ImageSharp.dll
 C:\Users\william\Music\BarResPos-Nando-Food-Backend\bin\Debug\net9.0\SQLitePCLRaw.batteries_v2.dll
 C:\Users\william\Music\BarResPos-Nando-Food-Backend\bin\Debug\net9.0\SQLitePCLRaw.core.dll
 C:\Users\william\Music\BarResPos-Nando-Food-Backend\bin\Debug\net9.0\SQLitePCLRaw.provider.e_sqlite3.dll

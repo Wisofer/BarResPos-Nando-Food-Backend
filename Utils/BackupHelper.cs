@@ -25,8 +25,8 @@ public static class BackupHelper
                 }
             }
 
-            // Crear carpeta destino local para los respaldos
-            string targetDir = @"C:\BarResPos_Backups";
+            // Crear carpeta destino en CommonApplicationData para los respaldos
+            string targetDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "BarResPos_Backups");
             if (!Directory.Exists(targetDir))
             {
                 Directory.CreateDirectory(targetDir);
@@ -40,10 +40,11 @@ public static class BackupHelper
             // Copiar el archivo físicamente sobreescribiendo si ya existe alguno idéntico
             File.Copy(dbFile, targetPath, true);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Ignorar silenciosamente cualquier fallo (permisos, disco lleno, etc.)
-            // Esto asegura que el sistema principal NUNCA se detenga ni afecte las ventas.
+            // No relanzar — el sistema principal NUNCA debe detenerse por fallos de respaldo.
+            // El error se escribe en consola para depuración (visible en desarrollo / logs de systemd).
+            Console.Error.WriteLine($"[BackupHelper] Error al crear respaldo ({tipoEvento}): {ex.Message}");
         }
     }
 }

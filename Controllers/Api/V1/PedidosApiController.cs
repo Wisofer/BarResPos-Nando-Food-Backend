@@ -479,26 +479,25 @@ public class PedidosApiController : BaseApiController
         if (pedido.Estado == SD.EstadoOrdenPagado || pedido.Estado == SD.EstadoOrdenCancelado)
             return FailResponse("No se puede enviar a cocina un pedido pagado o cancelado.", StatusCodes.Status409Conflict);
 
-        if (!pedido.FacturaServicios.Any())
-            return FailResponse("No se puede enviar a cocina un pedido sin items.", StatusCodes.Status400BadRequest);
+        bool tieneCocina = CocinaCatalogoHelper.OrdenTieneLineasCocina(pedido);
+        bool tieneBar = CocinaCatalogoHelper.OrdenTieneLineasBar(pedido);
 
-        if (!CocinaCatalogoHelper.OrdenTieneLineasCocina(pedido))
-            return FailResponse("No hay productos que requieran cocina en este pedido.", StatusCodes.Status400BadRequest);
+        if (!tieneCocina && !tieneBar)
+            return FailResponse("El pedido no tiene artículos para cocina ni bar.", StatusCodes.Status400BadRequest);
 
-        if (pedido.EstadoCocina == SD.EstadoCocinaListo || pedido.EstadoCocina == SD.EstadoCocinaEntregado)
-            return FailResponse("La cocina ya marcó este pedido como listo o entregado.", StatusCodes.Status409Conflict);
-
-        var urlTicket = UrlImpresionCocinaAbsoluta(pedido.Id);
-
-        if (pedido.Estado == SD.EstadoOrdenEnCocina && pedido.EstadoCocina == SD.EstadoCocinaEnPreparacion)
+        if (pedido.EstadoCocina == SD.EstadoCocinaEnPreparacion || pedido.EstadoCocina == SD.EstadoCocinaListo)
         {
+            var urls = new Dictionary<string, string>();
+            if (tieneCocina) urls["urlImpresionCocina"] = $"/api/v1/impresion/cocina/{id}";
+            if (tieneBar) urls["urlImpresionBar"] = $"/api/v1/impresion/bar/{id}";
+
             return OkResponse(new
             {
-                pedido.Id,
-                estado = pedido.Estado,
                 estadoCocina = pedido.EstadoCocina,
-                urlImpresionCocina = urlTicket
-            }, "Pedido ya estaba en cocina. Puede reimprimir el ticket.");
+                impresionUrls = urls,
+                urlImpresionCocina = tieneCocina ? urls["urlImpresionCocina"] : null,
+                urlImpresionBar = tieneBar ? urls["urlImpresionBar"] : null
+            }, "Pedido ya estaba en preparación. Puede reimprimir el ticket.");
         }
 
         var ahora = DateTime.Now;
@@ -507,21 +506,38 @@ public class PedidosApiController : BaseApiController
         pedido.FechaEnvioCocina = ahora;
         pedido.FechaActualizacion = ahora;
 
-        foreach (var linea in CocinaCatalogoHelper.LineasCocina(pedido.FacturaServicios))
-            linea.Estado = SD.EstadoCocinaEnPreparacion;
+        if (tieneCocina)
+        {
+            foreach (var item in CocinaCatalogoHelper.LineasCocina(pedido.FacturaServicios))
+            {
+                item.Estado = SD.EstadoCocinaEnPreparacion;
+            }
+        }
+
+        if (tieneBar)
+        {
+            foreach (var item in CocinaCatalogoHelper.LineasBar(pedido.FacturaServicios))
+            {
+                item.Estado = SD.EstadoCocinaEnPreparacion; // Comparten estado aunque vayan al bar
+            }
+        }
 
         SincronizarEstadosMesasPorPedido(pedido, pedido.MesaId);
 
         _context.SaveChanges();
 
+        var urlsNuevas = new Dictionary<string, string>();
+        if (tieneCocina) urlsNuevas["urlImpresionCocina"] = $"/api/v1/impresion/cocina/{id}";
+        if (tieneBar) urlsNuevas["urlImpresionBar"] = $"/api/v1/impresion/bar/{id}";
+
         return OkResponse(new
         {
-            pedido.Id,
-            estado = pedido.Estado,
-            estadoCocina = pedido.EstadoCocina,
-            pedido.FechaEnvioCocina,
-            urlImpresionCocina = urlTicket
-        }, "Pedido enviado a cocina");
+            estado = SD.EstadoOrdenEnCocina,
+            estadoCocina = SD.EstadoCocinaEnPreparacion,
+            impresionUrls = urlsNuevas,
+            urlImpresionCocina = tieneCocina ? urlsNuevas["urlImpresionCocina"] : null,
+            urlImpresionBar = tieneBar ? urlsNuevas["urlImpresionBar"] : null
+        }, "Pedido enviado exitosamente.");
     }
 
     [HttpPut("{id:int}")]
@@ -735,13 +751,11 @@ public class PedidosApiController : BaseApiController
         if (pedido == null) return FailResponse("Pedido no encontrado.", StatusCodes.Status404NotFound);
         if (pedido.Estado == SD.EstadoOrdenCancelado) return FailResponse("No se puede generar pre-cuenta de un pedido cancelado.");
 
-        var html = _impresionService.GenerarTicketComanda(pedido);
         return OkResponse(new
         {
             PedidoId = pedido.Id,
             PedidoNumero = pedido.Numero,
-            UrlImpresionPrecuenta = $"/api/v1/pedidos/{pedido.Id}/precuenta/html",
-            HtmlPrecuenta = html
+            UrlImpresionPrecuenta = $"/api/v1/impresion/comanda/{pedido.Id}"
         }, "Pre-cuenta generada");
     }
 
@@ -762,8 +776,94 @@ public class PedidosApiController : BaseApiController
         if (pedido == null) return NotFound("Pedido no encontrado.");
         if (pedido.Estado == SD.EstadoOrdenCancelado) return BadRequest("No se puede generar pre-cuenta de un pedido cancelado.");
 
-        var html = _impresionService.GenerarTicketComanda(pedido);
-        return Content(html, "text/html");
+        return Ok("Impresión nativa activada, use la API de impresión POST en su lugar.");
+    }
+
+    [HttpPost("{id:int}/separar")]
+    public IActionResult Separar(int id, [FromBody] SepararCuentaRequest request)
+    {
+        if (request.LineasAMover == null || !request.LineasAMover.Any())
+            return FailResponse("Debe especificar las líneas a separar.");
+
+        var pedidoOriginal = _context.Facturas
+            .Include(f => f.FacturaServicios)
+            .FirstOrDefault(f => f.Id == id);
+
+        if (pedidoOriginal == null)
+            return FailResponse("Pedido original no encontrado.", StatusCodes.Status404NotFound);
+
+        if (pedidoOriginal.Estado == SD.EstadoOrdenPagado || pedidoOriginal.Estado == SD.EstadoOrdenCancelado)
+            return FailResponse("No se puede separar un pedido pagado o cancelado.", StatusCodes.Status400BadRequest);
+
+        // Crear nueva factura clonada
+        var nuevoPedido = new Factura
+        {
+            Numero = GenerarNumeroFactura(),
+            FechaCreacion = DateTime.Now,
+            FechaActualizacion = DateTime.Now,
+            Estado = pedidoOriginal.Estado, // Pendiente o En Cocina
+            EstadoCocina = pedidoOriginal.EstadoCocina,
+            MesaId = pedidoOriginal.MesaId,
+            MeseroId = pedidoOriginal.MeseroId,
+            ClienteId = pedidoOriginal.ClienteId,
+            OrigenPedido = pedidoOriginal.OrigenPedido,
+            ServicioId = pedidoOriginal.ServicioId,
+            Categoria = pedidoOriginal.Categoria,
+            Observaciones = "Cuenta separada de orden #" + pedidoOriginal.Numero,
+            FacturaServicios = new List<FacturaServicio>()
+        };
+
+        decimal montoRestado = 0;
+
+        foreach (var lineaReq in request.LineasAMover)
+        {
+            var lineaOriginal = pedidoOriginal.FacturaServicios.FirstOrDefault(fs => fs.Id == lineaReq.FacturaServicioId);
+            if (lineaOriginal == null) continue;
+
+            if (lineaReq.Cantidad >= lineaOriginal.Cantidad)
+            {
+                // Mover línea completa
+                lineaOriginal.FacturaId = 0; // Temporarily detach to move it? No, just add to new
+                pedidoOriginal.FacturaServicios.Remove(lineaOriginal);
+                nuevoPedido.FacturaServicios.Add(lineaOriginal);
+                montoRestado += lineaOriginal.Monto;
+            }
+            else if (lineaReq.Cantidad > 0)
+            {
+                // Split cantidad
+                decimal precioUnitario = lineaOriginal.Monto / lineaOriginal.Cantidad;
+                decimal montoMover = precioUnitario * lineaReq.Cantidad;
+
+                // Restar a original
+                lineaOriginal.Cantidad -= lineaReq.Cantidad;
+                lineaOriginal.Monto -= montoMover;
+
+                // Crear clon para nueva factura
+                var nuevaLinea = new FacturaServicio
+                {
+                    ServicioId = lineaOriginal.ServicioId,
+                    Cantidad = lineaReq.Cantidad,
+                    Monto = montoMover,
+                    Estado = lineaOriginal.Estado,
+                    Notas = lineaOriginal.Notas,
+                    PrecioUnitario = lineaOriginal.PrecioUnitario
+                };
+                nuevoPedido.FacturaServicios.Add(nuevaLinea);
+                montoRestado += montoMover;
+            }
+        }
+
+        if (!nuevoPedido.FacturaServicios.Any())
+            return FailResponse("No se movió ninguna línea válida.");
+
+        pedidoOriginal.Monto -= montoRestado;
+        nuevoPedido.Monto = nuevoPedido.FacturaServicios.Sum(fs => fs.Monto);
+        pedidoOriginal.FechaActualizacion = DateTime.Now;
+
+        _context.Facturas.Add(nuevoPedido);
+        _context.SaveChanges();
+
+        return OkResponse(new { NuevoPedidoId = nuevoPedido.Id }, "Cuenta separada exitosamente.");
     }
 
     [HttpGet("exportar-excel")]
@@ -840,6 +940,26 @@ public class PedidosApiController : BaseApiController
         var nombre = $"pedidos_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
         return File(excel, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", nombre);
     }
+
+    private string GenerarNumeroFactura()
+    {
+        var fecha = DateTime.Today;
+        var ultimo = _context.Facturas
+            .Where(f => f.FechaCreacion.Date == fecha)
+            .OrderByDescending(f => f.Id)
+            .FirstOrDefault();
+
+        if (ultimo == null)
+            return $"{fecha:yyyyMMdd}-0001";
+
+        var partes = ultimo.Numero.Split('-');
+        if (partes.Length == 2 && int.TryParse(partes[1], out int consecutivo))
+        {
+            return $"{fecha:yyyyMMdd}-{(consecutivo + 1):D4}";
+        }
+
+        return $"{fecha:yyyyMMdd}-{(ultimo.Id + 1):D4}";
+    }
 }
 
 public class CambiarEstadoPedidoRequest
@@ -850,4 +970,15 @@ public class CambiarEstadoPedidoRequest
 public class CambiarMesaPedidoRequest
 {
     public int MesaId { get; set; }
+}
+
+public class SepararCuentaRequest
+{
+    public List<LineaAMover> LineasAMover { get; set; } = new();
+}
+
+public class LineaAMover
+{
+    public int FacturaServicioId { get; set; }
+    public int Cantidad { get; set; }
 }

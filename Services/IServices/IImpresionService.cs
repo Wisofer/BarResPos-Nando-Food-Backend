@@ -8,18 +8,33 @@ namespace BarRestPOS.Services.IServices;
 public interface IImpresionService
 {
     /// <summary>
-    /// Genera el HTML del ticket de cocina
+    /// Genera los bytes ESC/POS del ticket de cocina
     /// </summary>
-    string GenerarTicketCocina(Factura orden);
+    byte[] GenerarTicketCocina(Factura orden);
+
+    /// <summary>
+    /// Genera los bytes ESC/POS del ticket de bar
+    /// </summary>
+    byte[] GenerarTicketBar(Factura orden);
     
     /// <summary>
-    /// Genera el HTML del ticket de recibo/pago
+    /// Genera los bytes ESC/POS del ticket de recibo/pago
     /// </summary>
-    string GenerarTicketRecibo(Pago pago, Factura orden);
+    byte[] GenerarTicketRecibo(Pago pago, Factura orden);
     
     /// <summary>
-    /// Genera el HTML del ticket de comanda para mesero
+    /// Genera los bytes ESC/POS del ticket de comanda para mesero
     /// </summary>
-    string GenerarTicketComanda(Factura orden);
+    byte[] GenerarTicketComanda(Factura orden);
+
+    /// <summary>
+    /// Genera texto plano estructurado del ticket de recibo/pago para previsualización
+    /// </summary>
+    string GenerarPreviewRecibo(Pago pago, Factura orden);
+
+    /// <summary>
+    /// Genera texto plano estructurado del ticket de comanda para previsualización
+    /// </summary>
+    string GenerarPreviewComanda(Factura orden);
 }
 

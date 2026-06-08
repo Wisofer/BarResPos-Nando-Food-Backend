@@ -15,6 +15,7 @@ public class ProductoOpcionGrupo
     public int MinSeleccion { get; set; }
     /// <summary>Máximo de opciones; 0 = sin límite superior.</summary>
     public int MaxSeleccion { get; set; }
+    public bool ReemplazaPrecioBase { get; set; } = false;
     public bool Activo { get; set; } = true;
 
     public virtual Servicio Servicio { get; set; } = null!;

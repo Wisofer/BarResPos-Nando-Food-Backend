@@ -18,7 +18,8 @@ public static class PublicRequestUrls
         if (!string.IsNullOrWhiteSpace(configured))
             return configured;
 
-        return $"{request.Scheme}://{request.Host.Value}".TrimEnd('/');
+        var host = request.Host.Value ?? "localhost";
+        return $"{request.Scheme}://{host}".TrimEnd('/');
     }
 
     public static string ImpresionCocinaAbsolute(HttpRequest request, IConfiguration configuration, int ordenId) =>

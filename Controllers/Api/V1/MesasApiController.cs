@@ -146,6 +146,41 @@ public class MesasApiController : BaseApiController
         });
     }
 
+    [HttpGet("{id:int}/ordenes-activas")]
+    public IActionResult GetOrdenesActivas(int id)
+    {
+        var ordenes = _context.Facturas
+            .AsNoTracking()
+            .AsSplitQuery()
+            .Include(f => f.FacturaServicios).ThenInclude(x => x.Servicio)
+            .Include(f => f.FacturaServicios).ThenInclude(x => x.OpcionesSeleccionadas)
+            .Where(f => f.MesaId == id &&
+                        f.Estado != SD.EstadoOrdenPagado &&
+                        f.Estado != SD.EstadoOrdenCancelado)
+            .OrderBy(f => f.Id)
+            .ToList();
+
+        if (!ordenes.Any()) return OkResponse(new List<object>(), "Sin órdenes activas");
+
+        return OkResponse(ordenes.Select(orden => new
+        {
+            orden.Id,
+            orden.Numero,
+            orden.Estado,
+            orden.Monto,
+            Items = orden.FacturaServicios.Select(fs => new
+            {
+                fs.Id,
+                fs.ServicioId,
+                fs.Servicio.Nombre,
+                fs.Cantidad,
+                fs.Monto,
+                fs.Estado,
+                Opciones = fs.OpcionesSeleccionadas.Select(o => new { o.Id, o.ProductoOpcionItemId, o.NombreOpcion, o.PrecioAdicional })
+            })
+        }));
+    }
+
     [HttpPost]
     [Authorize(Policy = "Administrador")]
     public IActionResult Create([FromBody] MesaUpsertRequest request)

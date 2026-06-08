@@ -346,13 +346,11 @@ public class DeliveryApiController : BaseApiController
         if (pedido == null) return FailResponse("Pedido delivery no encontrado.", StatusCodes.Status404NotFound);
         if (pedido.Estado == SD.EstadoOrdenCancelado) return FailResponse("No se puede generar pre-cuenta de un pedido cancelado.");
 
-        var html = _impresionService.GenerarTicketComanda(pedido);
         return OkResponse(new
         {
             pedidoId = pedido.Id,
             pedidoNumero = pedido.Numero,
-            urlImpresionPrecuenta = $"/api/v1/delivery/pedidos/{pedido.Id}/precuenta/html",
-            htmlPrecuenta = html
+            urlImpresionPrecuenta = $"/api/v1/impresion/comanda/{pedido.Id}"
         }, "Pre-cuenta delivery generada");
     }
 
@@ -383,7 +381,7 @@ public class DeliveryApiController : BaseApiController
         if (pedido == null) return NotFound("Pedido delivery no encontrado.");
         if (pedido.Estado == SD.EstadoOrdenCancelado) return BadRequest("No se puede generar pre-cuenta de un pedido cancelado.");
 
-        return Content(_impresionService.GenerarTicketComanda(pedido), "text/html");
+        return Ok("Impresión nativa activada, use la API de impresión POST en su lugar.");
     }
 
     /// <summary>Preferir <c>POST /api/v1/pedidos/{id}/cancelar</c> unificado. Misma validación de PIN e inventario.</summary>

@@ -37,6 +37,7 @@ public class ProductoOpcionesApiController : BaseApiController
                 g.Obligatorio,
                 g.MinSeleccion,
                 g.MaxSeleccion,
+                g.ReemplazaPrecioBase,
                 g.Activo,
                 opciones = g.Opciones.OrderBy(o => o.Orden).Select(o => new
                 {
@@ -67,6 +68,7 @@ public class ProductoOpcionesApiController : BaseApiController
             Obligatorio = body.Obligatorio,
             MinSeleccion = body.MinSeleccion,
             MaxSeleccion = body.MaxSeleccion,
+            ReemplazaPrecioBase = body.ReemplazaPrecioBase,
             Activo = body.Activo
         };
         _context.ProductoOpcionGrupos.Add(g);
@@ -87,6 +89,7 @@ public class ProductoOpcionesApiController : BaseApiController
         g.Obligatorio = body.Obligatorio;
         g.MinSeleccion = body.MinSeleccion;
         g.MaxSeleccion = body.MaxSeleccion;
+        g.ReemplazaPrecioBase = body.ReemplazaPrecioBase;
         g.Activo = body.Activo;
         _context.SaveChanges();
         return OkResponse(new { g.Id }, "Grupo actualizado");
@@ -188,6 +191,7 @@ public class ProductoOpcionGrupoUpsertRequest
     public int MinSeleccion { get; set; }
     /// <summary>0 = sin máximo.</summary>
     public int MaxSeleccion { get; set; } = 1;
+    public bool ReemplazaPrecioBase { get; set; } = false;
     public bool Activo { get; set; } = true;
 }
 

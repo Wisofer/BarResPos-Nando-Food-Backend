@@ -19,16 +19,30 @@ public static class CocinaCatalogoHelper
         linea != null && ServicioRequiereCocina(linea.Servicio);
 
     public static bool OrdenTieneLineasCocina(Factura orden) =>
-        orden.FacturaServicios.Any(FacturaServicioRequiereCocina);
+        orden.FacturaServicios?.Any(FacturaServicioRequiereCocina) ?? false;
 
     public static IEnumerable<FacturaServicio> LineasCocina(IEnumerable<FacturaServicio> lineas) =>
         lineas.Where(FacturaServicioRequiereCocina);
+
+    // BAR LOGIC
+    public static bool ServicioRequiereBar(Servicio? servicio) =>
+        !ServicioRequiereCocina(servicio);
+
+    public static bool FacturaServicioRequiereBar(FacturaServicio? linea) =>
+        linea != null && ServicioRequiereBar(linea.Servicio);
+
+    public static bool OrdenTieneLineasBar(Factura orden) =>
+        orden.FacturaServicios?.Any(FacturaServicioRequiereBar) ?? false;
+
+    public static IEnumerable<FacturaServicio> LineasBar(IEnumerable<FacturaServicio> lineas) =>
+        lineas.Where(FacturaServicioRequiereBar);
 
     /// <summary>
     /// True solo si hay al menos una línea de cocina y todas esas líneas están en estado Listo.
     /// </summary>
     public static bool TodasLasLineasCocinaEstanListas(Factura orden)
     {
+        if (orden.FacturaServicios == null) return false;
         var cocina = LineasCocina(orden.FacturaServicios).ToList();
         return cocina.Count > 0 && cocina.All(fs => fs.Estado == SD.EstadoCocinaListo);
     }
