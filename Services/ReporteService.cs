@@ -101,6 +101,7 @@ public class ReporteService : IReporteService
             .Include(x => x.Cliente)
             .Include(x => x.Mesero)
             .Include(x => x.FacturaServicios).ThenInclude(d => d.Servicio)
+            .Include(x => x.FacturaServicios).ThenInclude(d => d.OpcionesSeleccionadas)
             .FirstOrDefaultAsync(x => x.Id == ordenId);
 
         if (f == null) return null;
@@ -117,7 +118,8 @@ public class ReporteService : IReporteService
             Cantidad = d.Cantidad,
             PrecioUnitario = d.PrecioUnitario,
             TotalLinea = d.Monto,
-            Notas = d.Notas
+            Notas = d.Notas,
+            OpcionesResumen = ProductoOpcionesLineaHelper.OpcionesResumen(d.OpcionesSeleccionadas)
         }).ToList();
 
         var unidades = lineas.Sum(l => l.Cantidad);
@@ -131,6 +133,7 @@ public class ReporteService : IReporteService
             Cliente = f.OrigenPedido == SD.OrigenPedidoDelivery ? (f.DeliveryClienteNombre ?? f.Cliente?.Nombre) : f.Cliente?.Nombre,
             Mesero = f.Mesero?.NombreCompleto,
             Origen = f.OrigenPedido == SD.OrigenPedidoDelivery ? "Delivery" : (f.OrigenPedido == SD.OrigenPedidoLlevar ? "Llevar" : "Mesa"),
+            ReferenciaOrigen = f.OrigenPedido == SD.OrigenPedidoDelivery ? (f.DeliveryClienteTelefono ?? f.DeliveryClienteNombre ?? "-") : (f.Mesa != null ? $"Mesa {f.Mesa.Numero}" : "-"),
             Estado = f.Estado,
             SubtotalLineas = subLineas,
             TotalCobrado = netoMap.GetValueOrDefault(f.Id, subLineas),

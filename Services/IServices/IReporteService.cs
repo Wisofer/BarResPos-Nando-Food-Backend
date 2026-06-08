@@ -62,6 +62,7 @@ public class VentaTicketCompletoReporte
     public string? Cliente { get; set; }
     public string? Mesero { get; set; }
     public string Origen { get; set; } = string.Empty;
+    public string? ReferenciaOrigen { get; set; }
     public string Estado { get; set; } = string.Empty;
     public decimal SubtotalLineas { get; set; }
     public decimal TotalCobrado { get; set; }
@@ -85,6 +86,8 @@ public class VentaLineaReporte
     public decimal PrecioUnitario { get; set; }
     public decimal TotalLinea { get; set; }
     public string? Notas { get; set; }
+    [JsonPropertyName("opcionesResumen")]
+    public string? OpcionesResumen { get; set; }
 }
 
 public class VentaPorCategoriaReporte
