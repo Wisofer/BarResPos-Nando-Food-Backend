@@ -198,7 +198,8 @@ public class ProductosApiController : BaseApiController
             EsPreparado = request.EsPreparado ?? true,
             ImagenUrl = request.ImagenUrl,
             Destacado = request.Destacado,
-            Activo = request.Activo
+            Activo = request.Activo,
+            ProveedorId = request.ProveedorId
         };
 
         _context.Servicios.Add(producto);
@@ -232,6 +233,7 @@ public class ProductosApiController : BaseApiController
         producto.ImagenUrl = request.ImagenUrl;
         producto.Destacado = request.Destacado;
         producto.Activo = request.Activo;
+        producto.ProveedorId = request.ProveedorId;
 
         _context.SaveChanges();
         return OkResponse(new { producto.Id }, "Producto actualizado");
@@ -657,6 +659,7 @@ public class ProductoUpsertRequest
     /// <summary>true = comida preparada (no devuelve stock al cancelar). false = bebida embotellada, etc. Null = mantener default (true al crear).</summary>
     public bool? EsPreparado { get; set; }
     public string? ImagenUrl { get; set; }
+    public int? ProveedorId { get; set; }
     public bool Destacado { get; set; }
     public bool Activo { get; set; } = true;
 

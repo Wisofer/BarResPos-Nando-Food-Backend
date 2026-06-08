@@ -12,9 +12,9 @@ public static class ProductoOpcionesLineaHelper
     /// <summary>
     /// Grupos que aplican a validación: activos y con al menos una opción activa.
     /// </summary>
-    public static List<ProductoOpcionGrupo> GruposEfectivos(IEnumerable<ProductoOpcionGrupo> grupos) =>
-        grupos
-            .Where(g => g.Activo && g.Opciones.Any(o => o.Activo))
+    public static List<ProductoOpcionGrupo> GruposEfectivos(IEnumerable<ProductoOpcionGrupo>? grupos) =>
+        (grupos ?? [])
+            .Where(g => g.Activo && g.Opciones != null && g.Opciones.Any(o => o.Activo))
             .OrderBy(g => g.Orden)
             .ToList();
 
@@ -120,7 +120,7 @@ public static class ProductoOpcionesLineaHelper
     }
 
     /// <summary>Payload para catálogo POS / GET productos (solo grupos y opciones activos con al menos una opción visible).</summary>
-    public static object[] MapOpcionesGruposCatalogo(IEnumerable<ProductoOpcionGrupo> grupos)
+    public static object[] MapOpcionesGruposCatalogo(IEnumerable<ProductoOpcionGrupo>? grupos)
     {
         return GruposEfectivos(grupos)
             .Select(g => (object)new

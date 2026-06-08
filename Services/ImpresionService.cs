@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using BarRestPOS.Data;
 using BarRestPOS.Models.Entities;
@@ -119,79 +120,232 @@ public class ImpresionService : IImpresionService
                 .ToList());
     }
 
-    public byte[] GenerarTicketCocina(Factura orden)
+    private EscPosBuilder ConstruirCabeceraCocinaBar(string tipoTicket, string numero, Factura orden, DateTime fecha)
     {
-        var esc = ConstruirCabecera("ORDEN", orden.Numero, orden, orden.FechaCreacion);
-
-        esc.BoldOn()
-           .Print3Columns("CANT", "PRODUCTO", "NOTAS")
+        var esc = new EscPosBuilder();
+        esc.AlignCenter()
+           .BoldOn()
+           .PrintLine("================================================")
+           .PrintLine($"** {tipoTicket.ToUpper()} **")
+           .PrintLine("================================================")
+           .NormalFont()
            .BoldOff()
-           .DrawDivider();
+           .AlignLeft();
 
-        foreach (var item in CocinaCatalogoHelper.LineasCocina(orden.FacturaServicios))
+        var ubicacionNombre = orden.Mesa?.Ubicacion?.Nombre?.ToUpper() ?? "";
+        var mesaStr = $"MESA: {orden.Mesa?.Numero ?? "S/M"}";
+        if (!string.IsNullOrEmpty(ubicacionNombre))
         {
-            esc.BoldOn()
-               .PrintLine($"{item.Cantidad.ToString().PadRight(4)} {item.Servicio.Nombre}")
-               .BoldOff();
+            mesaStr += $" [{ubicacionNombre}]";
+        }
+        var ordenStr = $"ORDEN: #{numero}";
+
+        var horaStr = $"HORA: {fecha:HH:mm (dd/MM)}";
+        var meseroStr = $"MESERO: {orden.Mesero?.NombreCompleto ?? "N/A"}";
+
+        esc.PrintColumns(mesaStr, ordenStr);
+        esc.PrintColumns(horaStr, meseroStr);
+        esc.PrintLine("================================================");
+
+        return esc;
+    }
+
+    private void PrintCardLine(EscPosBuilder esc, string content, string indent = "")
+    {
+        if (content == null) return;
+
+        int maxLen = 42;
+        int indentLen = indent.Length;
+        int contentLen = maxLen - indentLen;
+        if (contentLen <= 0) contentLen = maxLen;
+
+        var list = new List<string>();
+        string remaining = content;
+
+        while (remaining.Length > 0)
+        {
+            if (remaining.Length <= contentLen)
+            {
+                list.Add(remaining);
+                break;
+            }
+            else
+            {
+                int splitIdx = remaining.LastIndexOf(' ', contentLen);
+                if (splitIdx <= 0)
+                {
+                    splitIdx = contentLen;
+                }
+
+                list.Add(remaining.Substring(0, splitIdx).TrimEnd());
+                remaining = remaining.Substring(splitIdx).TrimStart();
+            }
+        }
+
+        bool isFirst = true;
+        foreach (var line in list)
+        {
+            var lineWithIndent = isFirst ? (indent + line) : (new string(' ', indentLen) + line);
+            isFirst = false;
+
+            var padded = lineWithIndent.PadRight(42);
+            if (padded.Length > 42) padded = padded.Substring(0, 42);
+            esc.PrintLine($"|  {padded}  |");
+        }
+    }
+
+    private EscPosBuilder BuildTicketCocina(Factura orden, List<int>? lineasFilter = null)
+    {
+        var items = CocinaCatalogoHelper.LineasCocina(orden.FacturaServicios);
+
+        string titulo = "COMANDA DE COCINA";
+        List<FacturaServicio> itemsParaImprimir;
+
+        if (lineasFilter != null && lineasFilter.Count > 0)
+        {
+            titulo = "ADICION DE COCINA";
+            itemsParaImprimir = items.Where(i => lineasFilter.Contains(i.Id)).ToList();
+        }
+        else
+        {
+            bool tieneEnPreparacion = items.Any(i => i.Estado == "En Preparación" || i.Estado == "Pendiente");
+            bool tieneListosOEntregados = items.Any(i => i.Estado == "Listo" || i.Estado == "Entregado");
+
+            if (tieneEnPreparacion && tieneListosOEntregados)
+            {
+                titulo = "ADICION DE COCINA";
+                itemsParaImprimir = items.Where(i => i.Estado == "En Preparación" || i.Estado == "Pendiente").ToList();
+            }
+            else if (!tieneEnPreparacion)
+            {
+                titulo = "REIMPRESION COCINA";
+                itemsParaImprimir = items.ToList();
+            }
+            else
+            {
+                itemsParaImprimir = items.ToList();
+            }
+        }
+
+        var esc = ConstruirCabeceraCocinaBar(titulo, orden.Numero, orden, orden.FechaCreacion);
+
+        bool first = true;
+        foreach (var item in itemsParaImprimir)
+        {
+            if (first)
+            {
+                esc.PrintLine("+----------------------------------------------+");
+                first = false;
+            }
+
+            var prodNombre = (item.Servicio?.Nombre ?? "Producto").ToUpper();
+            PrintCardLine(esc, $"[ {item.Cantidad} ]  {prodNombre}", "");
 
             var opciones = StringFragmentOpcionesLinea(item);
             if (!string.IsNullOrEmpty(opciones))
-                esc.PrintLine($"   · {opciones}");
-            if (!string.IsNullOrEmpty(item.Notas))
-                esc.PrintLine($"   [!] {item.Notas}");
-        }
+            {
+                PrintCardLine(esc, $"--> {opciones}", "       ");
+            }
 
-        esc.DrawDivider();
+            if (!string.IsNullOrEmpty(item.Notas))
+            {
+                PrintCardLine(esc, $"(¡) NOTA: {item.Notas}", "       ");
+            }
+
+            esc.PrintLine("+----------------------------------------------+");
+        }
 
         if (!string.IsNullOrEmpty(orden.Observaciones))
         {
-            esc.BoldOn()
-               .PrintLine("OBSERVACIONES:")
-               .BoldOff()
-               .PrintLine(orden.Observaciones)
-               .DrawDivider();
+            if (first)
+            {
+                esc.PrintLine("+----------------------------------------------+");
+            }
+            PrintCardLine(esc, $"OBS: {orden.Observaciones}", "");
+            esc.PrintLine("+----------------------------------------------+");
         }
 
         ConstruirPiePagina(esc, "¡Gracias por su trabajo!");
-        return esc.GetBytes();
+        return esc;
     }
 
-    public byte[] GenerarTicketBar(Factura orden)
+    private EscPosBuilder BuildTicketBar(Factura orden, List<int>? lineasFilter = null)
     {
-        var esc = ConstruirCabecera("TICKET BAR", orden.Numero, orden, orden.FechaCreacion);
+        var items = CocinaCatalogoHelper.LineasBar(orden.FacturaServicios);
 
-        esc.BoldOn()
-           .Print3Columns("CANT", "PRODUCTO", "NOTAS")
-           .BoldOff()
-           .DrawDivider();
+        string titulo = "COMANDA DE BAR";
+        List<FacturaServicio> itemsParaImprimir;
 
-        foreach (var item in CocinaCatalogoHelper.LineasBar(orden.FacturaServicios))
+        if (lineasFilter != null && lineasFilter.Count > 0)
         {
-            esc.BoldOn()
-               .PrintLine($"{item.Cantidad.ToString().PadRight(4)} {item.Servicio.Nombre}")
-               .BoldOff();
+            titulo = "ADICION DE BAR";
+            itemsParaImprimir = items.Where(i => lineasFilter.Contains(i.Id)).ToList();
+        }
+        else
+        {
+            bool tieneEnPreparacion = items.Any(i => i.Estado == "En Preparación" || i.Estado == "Pendiente");
+            bool tieneListosOEntregados = items.Any(i => i.Estado == "Listo" || i.Estado == "Entregado");
+
+            if (tieneEnPreparacion && tieneListosOEntregados)
+            {
+                titulo = "ADICION DE BAR";
+                itemsParaImprimir = items.Where(i => i.Estado == "En Preparación" || i.Estado == "Pendiente").ToList();
+            }
+            else if (!tieneEnPreparacion)
+            {
+                titulo = "REIMPRESION BAR";
+                itemsParaImprimir = items.ToList();
+            }
+            else
+            {
+                itemsParaImprimir = items.ToList();
+            }
+        }
+
+        var esc = ConstruirCabeceraCocinaBar(titulo, orden.Numero, orden, orden.FechaCreacion);
+
+        bool first = true;
+        foreach (var item in itemsParaImprimir)
+        {
+            if (first)
+            {
+                esc.PrintLine("+----------------------------------------------+");
+                first = false;
+            }
+
+            var prodNombre = (item.Servicio?.Nombre ?? "Producto").ToUpper();
+            PrintCardLine(esc, $"[ {item.Cantidad} ]  {prodNombre}", "");
 
             var opciones = StringFragmentOpcionesLinea(item);
             if (!string.IsNullOrEmpty(opciones))
-                esc.PrintLine($"   · {opciones}");
-            if (!string.IsNullOrEmpty(item.Notas))
-                esc.PrintLine($"   [!] {item.Notas}");
-        }
+            {
+                PrintCardLine(esc, $"--> {opciones}", "       ");
+            }
 
-        esc.DrawDivider();
+            if (!string.IsNullOrEmpty(item.Notas))
+            {
+                PrintCardLine(esc, $"(¡) NOTA: {item.Notas}", "       ");
+            }
+
+            esc.PrintLine("+----------------------------------------------+");
+        }
 
         if (!string.IsNullOrEmpty(orden.Observaciones))
         {
-            esc.BoldOn()
-               .PrintLine("OBSERVACIONES:")
-               .BoldOff()
-               .PrintLine(orden.Observaciones)
-               .DrawDivider();
+            if (first)
+            {
+                esc.PrintLine("+----------------------------------------------+");
+            }
+            PrintCardLine(esc, $"OBS: {orden.Observaciones}", "");
+            esc.PrintLine("+----------------------------------------------+");
         }
 
         ConstruirPiePagina(esc, "¡Buen servicio!");
-        return esc.GetBytes();
+        return esc;
     }
+
+    public byte[] GenerarTicketCocina(Factura orden, List<int>? lineasFilter = null) => BuildTicketCocina(orden, lineasFilter).GetBytes();
+    public byte[] GenerarTicketBar(Factura orden, List<int>? lineasFilter = null) => BuildTicketBar(orden, lineasFilter).GetBytes();
 
     private EscPosBuilder BuildRecibo(Pago pago, Factura orden)
     {
@@ -279,4 +433,6 @@ public class ImpresionService : IImpresionService
 
     public byte[] GenerarTicketComanda(Factura orden) => BuildComanda(orden).GetBytes();
     public string GenerarPreviewComanda(Factura orden) => BuildComanda(orden).GetPlainText();
+    public string GenerarPreviewCocina(Factura orden, List<int>? lineasFilter = null) => BuildTicketCocina(orden, lineasFilter).GetPlainText();
+    public string GenerarPreviewBar(Factura orden, List<int>? lineasFilter = null) => BuildTicketBar(orden, lineasFilter).GetPlainText();
 }

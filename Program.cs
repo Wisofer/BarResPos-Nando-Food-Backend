@@ -120,6 +120,8 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("FacturasPagos", policy => policy.RequireClaim("Rol", "Normal", "Administrador"));
     options.AddPolicy("Pagos", policy => policy.RequireClaim("Rol", "Caja", "Normal", "Administrador"));
     options.AddPolicy("Inventario", policy => policy.RequireClaim("Rol", "Normal", "Administrador"));
+    options.AddPolicy("Cocina", policy => policy.RequireClaim("Rol", "Cocinero", "Administrador"));
+    options.AddPolicy("Cajero", policy => policy.RequireClaim("Rol", "Cajero", "Caja", "Administrador"));
 });
 
 // Registrar servicios
@@ -265,8 +267,6 @@ if (useForwardedHeaders)
     {
         ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
     };
-    fwd.KnownNetworks.Clear();
-    fwd.KnownProxies.Clear();
     app.UseForwardedHeaders(fwd);
 }
 
@@ -276,6 +276,10 @@ if (!app.Environment.IsDevelopment())
     {
         errorApp.Run(async context =>
         {
+            var exceptionHandler = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerPathFeature>();
+            var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogError(exceptionHandler?.Error, "Error interno del servidor en {Path}", exceptionHandler?.Path ?? context.Request.Path);
+
             context.Response.StatusCode = StatusCodes.Status500InternalServerError;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsJsonAsync(new ApiResponse<object>
@@ -331,5 +335,14 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Servir la SPA (frontend) para tablets en la LAN
+var frontendRoot = app.Environment.WebRootPath;
+if (!string.IsNullOrEmpty(frontendRoot) && Directory.Exists(frontendRoot))
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+    app.MapFallbackToFile("index.html");
+}
 
 app.Run();

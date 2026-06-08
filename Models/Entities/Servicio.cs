@@ -24,6 +24,7 @@ public class Servicio
     /// <summary>Si es comida preparada en cocina: al cancelar pedido NO se devuelve stock. Si es false (bebida embotellada, etc.), sí se devuelve stock.</summary>
     public bool EsPreparado { get; set; } = true;
     public string? ImagenUrl { get; set; } // URL de la imagen del producto
+    public int? ProveedorId { get; set; }
     public bool Destacado { get; set; } = false; // Para mostrar en la pantalla principal
     public bool Activo { get; set; } = true;
     public DateTime FechaCreacion { get; set; } = DateTime.Now;

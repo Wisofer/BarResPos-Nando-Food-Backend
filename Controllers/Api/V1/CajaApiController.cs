@@ -59,7 +59,7 @@ public class CajaApiController : BaseApiController
     }
 
     [HttpPost("apertura")]
-    [Authorize(Policy = "Administrador")]
+    [Authorize(Policy = "Cajero")]
     public async Task<IActionResult> Apertura([FromBody] AperturaCajaRequest request)
     {
         var userId = SecurityHelper.GetUserId(User);
@@ -83,7 +83,7 @@ public class CajaApiController : BaseApiController
     }
 
     [HttpGet("cierre/preview")]
-    [Authorize(Policy = "Administrador")]
+    [Authorize(Policy = "Cajero")]
     public async Task<IActionResult> PreviewCierre()
     {
         try
@@ -122,7 +122,7 @@ public class CajaApiController : BaseApiController
     }
 
     [HttpPost("cierre")]
-    [Authorize(Policy = "Administrador")]
+    [Authorize(Policy = "Cajero")]
     public async Task<IActionResult> CerrarCaja([FromBody] CierreCajaRequest request)
     {
         try
@@ -144,7 +144,7 @@ public class CajaApiController : BaseApiController
     }
 
     [HttpGet("historial")]
-    [Authorize(Policy = "Administrador")]
+    [Authorize(Policy = "Cajero")]
     public async Task<IActionResult> Historial([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] DateTime? desde = null, [FromQuery] DateTime? hasta = null)
     {
         try
@@ -202,7 +202,7 @@ public class CajaApiController : BaseApiController
     }
 
     [HttpGet("historial/excel")]
-    [Authorize(Policy = "Administrador")]
+    [Authorize(Policy = "Cajero")]
     public async Task<IActionResult> HistorialExcel([FromQuery] DateTime? desde, [FromQuery] DateTime? hasta)
     {
         try
@@ -232,15 +232,15 @@ public class CajaApiController : BaseApiController
     }
 
     [HttpGet("cierres/{id:int}")]
-    [Authorize(Policy = "Administrador")]
+    [Authorize(Policy = "Cajero")]
     public Task<IActionResult> DetalleCierrePorCierres(int id) => DetalleCierreCore(id);
 
     [HttpGet("historial/{id:int}")]
-    [Authorize(Policy = "Administrador")]
+    [Authorize(Policy = "Cajero")]
     public Task<IActionResult> DetalleCierrePorHistorial(int id) => DetalleCierreCore(id);
 
     [HttpGet("cierre/{id:int}")]
-    [Authorize(Policy = "Administrador")]
+    [Authorize(Policy = "Cajero")]
     public Task<IActionResult> DetalleCierre(int id) => DetalleCierreCore(id);
 
     private async Task<IActionResult> DetalleCierreCore(int id)

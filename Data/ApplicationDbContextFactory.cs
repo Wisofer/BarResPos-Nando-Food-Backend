@@ -23,7 +23,8 @@ public class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Applicati
         AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
         var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
-        optionsBuilder.UseNpgsql(cs);
+        optionsBuilder.UseSqlite(cs);
+        optionsBuilder.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
         return new ApplicationDbContext(optionsBuilder.Options);
     }
 }

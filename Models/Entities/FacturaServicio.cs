@@ -16,6 +16,7 @@ public class FacturaServicio
     public decimal Monto { get; set; } // Subtotal (PrecioUnitario * Cantidad)
     public string? Notas { get; set; } // Notas especiales: "sin hielo", "extra queso", "término medio"
     public string Estado { get; set; } = "Pendiente"; // Pendiente, En Preparación, Listo, Entregado
+    public DateTime? FechaEnvioCocina { get; set; } // Fecha/hora en que fue enviado a cocina/bar
     
     // Propiedades de navegación
     public virtual Factura Factura { get; set; } = null!;

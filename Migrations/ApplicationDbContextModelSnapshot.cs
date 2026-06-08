@@ -417,6 +417,9 @@ namespace BarRestPOS.Migrations
                     b.Property<int>("FacturaId")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("FechaEnvioCocina")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<decimal>("Monto")
                         .HasColumnType("decimal(18,2)");
 
@@ -999,6 +1002,9 @@ namespace BarRestPOS.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("decimal(18,2)")
                         .HasDefaultValue(0m);
+
+                    b.Property<int?>("ProveedorId")
+                        .HasColumnType("integer");
 
                     b.Property<int>("Stock")
                         .ValueGeneratedOnAdd()

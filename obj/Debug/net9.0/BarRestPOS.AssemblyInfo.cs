@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("BarRestPOS")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b60de6d431aebc437042b3dec2501e5aaf4a018f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c619203b078e5fc1669c1a2707eefca1124441b1")]
 [assembly: System.Reflection.AssemblyProductAttribute("BarRestPOS")]
 [assembly: System.Reflection.AssemblyTitleAttribute("BarRestPOS")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

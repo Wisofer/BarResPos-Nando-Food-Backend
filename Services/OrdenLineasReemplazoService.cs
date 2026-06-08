@@ -120,56 +120,103 @@ public class OrdenLineasReemplazoService
                 }
             }
 
-            db.FacturaServicios.RemoveRange(pedido.FacturaServicios);
-            pedido.FacturaServicios.Clear();
+            // SMART MERGE LOGIC INSTEAD OF RemoveRange
+            var lineasAEliminar = new List<FacturaServicio>();
+            var lineasActualizadas = new List<FacturaServicio>();
 
-            decimal nuevoMonto = 0;
-            foreach (var item in items)
+            foreach (var fs in pedido.FacturaServicios.ToList())
             {
-                var producto = productos[item.ServicioId];
-                var seleccionesDto = (item.OpcionesSeleccionadas ?? new List<OpcionSeleccionRequest>())
-                    .Select(o => new OpcionSeleccionDto(o.GrupoId, o.OpcionId))
-                    .ToList();
-                var gruposEf = ProductoOpcionesLineaHelper.GruposEfectivos(producto.OpcionGrupos);
+                var matchedReq = items.FirstOrDefault(item => 
+                    item.ServicioId == fs.ServicioId &&
+                    (fs.Notas ?? "").Trim() == (item.Notas ?? "").Trim() &&
+                    OpcionesSonIguales(item.OpcionesSeleccionadas, fs.OpcionesSeleccionadas)
+                );
 
-                decimal precio;
-                List<FacturaServicioOpcionSeleccion> filasOpc;
-                if (gruposEf.Count == 0 && seleccionesDto.Count == 0)
+                if (matchedReq != null)
                 {
-                    precio = item.PrecioUnitario.HasValue && item.PrecioUnitario.Value >= 0
-                        ? item.PrecioUnitario.Value
-                        : producto.Precio;
-                    filasOpc = new List<FacturaServicioOpcionSeleccion>();
+                    fs.Cantidad = matchedReq.Cantidad;
+                    fs.Monto = Math.Round(fs.PrecioUnitario * matchedReq.Cantidad, 2, MidpointRounding.AwayFromZero);
+                    
+                    if (!string.IsNullOrWhiteSpace(matchedReq.Estado))
+                    {
+                        fs.Estado = matchedReq.Estado.Trim();
+                    }
+                    
+                    lineasActualizadas.Add(fs);
                 }
                 else
                 {
-                    var (adicional, filas, errOp) = ProductoOpcionesLineaHelper.ValidarYConstruirFilas(producto, seleccionesDto);
-                    if (errOp != null)
+                    lineasAEliminar.Add(fs);
+                }
+            }
+
+            decimal nuevoMonto = lineasActualizadas.Sum(fs => fs.Monto);
+
+            foreach (var item in items)
+            {
+                bool yaActualizado = lineasActualizadas.Any(fs => 
+                    fs.ServicioId == item.ServicioId &&
+                    (fs.Notas ?? "").Trim() == (item.Notas ?? "").Trim() &&
+                    OpcionesSonIguales(item.OpcionesSeleccionadas, fs.OpcionesSeleccionadas)
+                );
+
+                if (!yaActualizado)
+                {
+                    var producto = productos[item.ServicioId];
+                    var seleccionesDto = (item.OpcionesSeleccionadas ?? new List<OpcionSeleccionRequest>())
+                        .Select(o => new OpcionSeleccionDto(o.GrupoId, o.OpcionId))
+                        .ToList();
+                    var gruposEf = ProductoOpcionesLineaHelper.GruposEfectivos(producto.OpcionGrupos);
+
+                    decimal precio;
+                    List<FacturaServicioOpcionSeleccion> filasOpc;
+                    if (gruposEf.Count == 0 && seleccionesDto.Count == 0)
                     {
-                        tx.Rollback();
-                        return errOp;
+                        precio = item.PrecioUnitario.HasValue && item.PrecioUnitario.Value >= 0
+                            ? item.PrecioUnitario.Value
+                            : producto.Precio;
+                        filasOpc = new List<FacturaServicioOpcionSeleccion>();
+                    }
+                    else
+                    {
+                        var (adicional, filas, errOp) = ProductoOpcionesLineaHelper.ValidarYConstruirFilas(producto, seleccionesDto);
+                        if (errOp != null)
+                        {
+                            tx.Rollback();
+                            return errOp;
+                        }
+
+                        filasOpc = filas;
+                        precio = Math.Round(producto.Precio + adicional, 2, MidpointRounding.AwayFromZero);
                     }
 
-                    filasOpc = filas;
-                    precio = Math.Round(producto.Precio + adicional, 2, MidpointRounding.AwayFromZero);
+                    var subtotal = Math.Round(precio * item.Cantidad, 2, MidpointRounding.AwayFromZero);
+                    nuevoMonto += subtotal;
+
+                    var nuevaLinea = new FacturaServicio
+                    {
+                        FacturaId = pedido.Id,
+                        ServicioId = item.ServicioId,
+                        Cantidad = item.Cantidad,
+                        PrecioUnitario = precio,
+                        Monto = subtotal,
+                        Estado = string.IsNullOrWhiteSpace(item.Estado) ? SD.EstadoCocinaPendiente : item.Estado.Trim(),
+                        Notas = item.Notas
+                    };
+                    foreach (var op in filasOpc)
+                        nuevaLinea.OpcionesSeleccionadas.Add(op);
+                    
+                    db.FacturaServicios.Add(nuevaLinea);
+                    pedido.FacturaServicios.Add(nuevaLinea);
                 }
+            }
 
-                var subtotal = Math.Round(precio * item.Cantidad, 2, MidpointRounding.AwayFromZero);
-                nuevoMonto += subtotal;
-
-                var linea = new FacturaServicio
-                {
-                    FacturaId = pedido.Id,
-                    ServicioId = item.ServicioId,
-                    Cantidad = item.Cantidad,
-                    PrecioUnitario = precio,
-                    Monto = subtotal,
-                    Estado = string.IsNullOrWhiteSpace(item.Estado) ? SD.EstadoCocinaPendiente : item.Estado.Trim(),
-                    Notas = item.Notas
-                };
-                foreach (var op in filasOpc)
-                    linea.OpcionesSeleccionadas.Add(op);
-                pedido.FacturaServicios.Add(linea);
+            foreach (var fs in lineasAEliminar)
+            {
+                if (fs.OpcionesSeleccionadas?.Count > 0)
+                    db.FacturaServicioOpcionesSeleccion.RemoveRange(fs.OpcionesSeleccionadas);
+                db.FacturaServicios.Remove(fs);
+                pedido.FacturaServicios.Remove(fs);
             }
 
             pedido.Monto = nuevoMonto;
@@ -249,5 +296,18 @@ public class OrdenLineasReemplazoService
             pedido.ServicioId = pedido.FacturaServicios.First().ServicioId;
         pedido.FechaActualizacion = DateTime.Now;
         return (false, null);
+    }
+
+    private static bool OpcionesSonIguales(List<OpcionSeleccionRequest>? reqOpts, ICollection<FacturaServicioOpcionSeleccion> dbOpts)
+    {
+        var rOpts = reqOpts ?? new List<OpcionSeleccionRequest>();
+        if (rOpts.Count != dbOpts.Count) return false;
+
+        foreach (var ro in rOpts)
+        {
+            bool found = dbOpts.Any(dbo => dbo.ProductoOpcionGrupoId == ro.GrupoId && dbo.ProductoOpcionItemId == ro.OpcionId);
+            if (!found) return false;
+        }
+        return true;
     }
 }

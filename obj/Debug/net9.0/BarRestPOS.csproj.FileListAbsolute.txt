@@ -361,3 +361,8 @@ C:\Users\william\Music\BarResPos-Nando-Food-Backend\obj\Debug\net9.0\refint\BarR
 C:\Users\william\Music\BarResPos-Nando-Food-Backend\obj\Debug\net9.0\BarRestPOS.pdb
 C:\Users\william\Music\BarResPos-Nando-Food-Backend\obj\Debug\net9.0\BarRestPOS.genruntimeconfig.cache
 C:\Users\william\Music\BarResPos-Nando-Food-Backend\obj\Debug\net9.0\ref\BarRestPOS.dll
+C:\Users\william\Music\BarResPos-Nando-Food-Backend\bin\Debug\net9.0\BarRestPOS.staticwebassets.runtime.json
+C:\Users\william\Music\BarResPos-Nando-Food-Backend\obj\Debug\net9.0\compressed\lx52ihx3fc-qkk0e2c1ht.gz
+C:\Users\william\Music\BarResPos-Nando-Food-Backend\obj\Debug\net9.0\compressed\qu6dvuv3ka-69kjnsiwqx.gz
+C:\Users\william\Music\BarResPos-Nando-Food-Backend\obj\Debug\net9.0\compressed\53dms6vqe4-8q5f6mvrg1.gz
+C:\Users\william\Music\BarResPos-Nando-Food-Backend\obj\Debug\net9.0\compressed\e9ewegrjbr-ykes5mc47l.gz

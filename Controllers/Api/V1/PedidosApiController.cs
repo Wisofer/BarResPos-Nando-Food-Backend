@@ -479,25 +479,40 @@ public class PedidosApiController : BaseApiController
         if (pedido.Estado == SD.EstadoOrdenPagado || pedido.Estado == SD.EstadoOrdenCancelado)
             return FailResponse("No se puede enviar a cocina un pedido pagado o cancelado.", StatusCodes.Status409Conflict);
 
-        bool tieneCocina = CocinaCatalogoHelper.OrdenTieneLineasCocina(pedido);
-        bool tieneBar = CocinaCatalogoHelper.OrdenTieneLineasBar(pedido);
+        var lineasCocina = CocinaCatalogoHelper.LineasCocina(pedido.FacturaServicios);
+        var lineasBar = CocinaCatalogoHelper.LineasBar(pedido.FacturaServicios);
+
+        bool tieneCocina = lineasCocina.Any();
+        bool tieneBar = lineasBar.Any();
 
         if (!tieneCocina && !tieneBar)
             return FailResponse("El pedido no tiene artículos para cocina ni bar.", StatusCodes.Status400BadRequest);
 
-        if (pedido.EstadoCocina == SD.EstadoCocinaEnPreparacion || pedido.EstadoCocina == SD.EstadoCocinaListo)
-        {
-            var urls = new Dictionary<string, string>();
-            if (tieneCocina) urls["urlImpresionCocina"] = $"/api/v1/impresion/cocina/{id}";
-            if (tieneBar) urls["urlImpresionBar"] = $"/api/v1/impresion/bar/{id}";
+        bool tienePendientesCocina = lineasCocina.Any(l => l.Estado == SD.EstadoCocinaPendiente);
+        bool tienePendientesBar = lineasBar.Any(l => l.Estado == SD.EstadoCocinaPendiente);
+        bool tienePendientes = tienePendientesCocina || tienePendientesBar;
 
-            return OkResponse(new
+        if (!tienePendientes)
+        {
+            // Si ya está entregado, no se puede reenviar — protección explícita.
+            if (pedido.EstadoCocina == SD.EstadoCocinaEntregado)
+                return FailResponse("La cocina ya marcó este pedido como entregado.", StatusCodes.Status409Conflict);
+
+            // Si está en preparación o listo, permite reimprimir el ticket.
+            if (pedido.EstadoCocina == SD.EstadoCocinaEnPreparacion || pedido.EstadoCocina == SD.EstadoCocinaListo)
             {
-                estadoCocina = pedido.EstadoCocina,
-                impresionUrls = urls,
-                urlImpresionCocina = tieneCocina ? urls["urlImpresionCocina"] : null,
-                urlImpresionBar = tieneBar ? urls["urlImpresionBar"] : null
-            }, "Pedido ya estaba en preparación. Puede reimprimir el ticket.");
+                var urls = new Dictionary<string, string>();
+                if (tieneCocina) urls["urlImpresionCocina"] = $"/api/v1/impresion/cocina/{id}";
+                if (tieneBar) urls["urlImpresionBar"] = $"/api/v1/impresion/bar/{id}";
+
+                return OkResponse(new
+                {
+                    estadoCocina = pedido.EstadoCocina,
+                    impresionUrls = urls,
+                    urlImpresionCocina = tieneCocina ? urls["urlImpresionCocina"] : null,
+                    urlImpresionBar = tieneBar ? urls["urlImpresionBar"] : null
+                }, "Pedido ya estaba en preparación. Puede reimprimir el ticket.");
+            }
         }
 
         var ahora = DateTime.Now;
@@ -506,19 +521,26 @@ public class PedidosApiController : BaseApiController
         pedido.FechaEnvioCocina = ahora;
         pedido.FechaActualizacion = ahora;
 
+        var idsCocinaNuevos = new System.Collections.Generic.List<int>();
+        var idsBarNuevos = new System.Collections.Generic.List<int>();
+
         if (tieneCocina)
         {
-            foreach (var item in CocinaCatalogoHelper.LineasCocina(pedido.FacturaServicios))
+            foreach (var item in lineasCocina.Where(l => l.Estado == SD.EstadoCocinaPendiente))
             {
+                idsCocinaNuevos.Add(item.Id);
                 item.Estado = SD.EstadoCocinaEnPreparacion;
+                item.FechaEnvioCocina = ahora;
             }
         }
 
         if (tieneBar)
         {
-            foreach (var item in CocinaCatalogoHelper.LineasBar(pedido.FacturaServicios))
+            foreach (var item in lineasBar.Where(l => l.Estado == SD.EstadoCocinaPendiente))
             {
-                item.Estado = SD.EstadoCocinaEnPreparacion; // Comparten estado aunque vayan al bar
+                idsBarNuevos.Add(item.Id);
+                item.Estado = SD.EstadoCocinaEnPreparacion;
+                item.FechaEnvioCocina = ahora;
             }
         }
 
@@ -527,8 +549,21 @@ public class PedidosApiController : BaseApiController
         _context.SaveChanges();
 
         var urlsNuevas = new Dictionary<string, string>();
-        if (tieneCocina) urlsNuevas["urlImpresionCocina"] = $"/api/v1/impresion/cocina/{id}";
-        if (tieneBar) urlsNuevas["urlImpresionBar"] = $"/api/v1/impresion/bar/{id}";
+        
+        string urlCocina = $"/api/v1/impresion/cocina/{id}";
+        if (idsCocinaNuevos.Count > 0)
+        {
+            urlCocina += "?lineas=" + string.Join(",", idsCocinaNuevos);
+        }
+        
+        string urlBar = $"/api/v1/impresion/bar/{id}";
+        if (idsBarNuevos.Count > 0)
+        {
+            urlBar += "?lineas=" + string.Join(",", idsBarNuevos);
+        }
+
+        if (tieneCocina) urlsNuevas["urlImpresionCocina"] = urlCocina;
+        if (tieneBar) urlsNuevas["urlImpresionBar"] = urlBar;
 
         return OkResponse(new
         {
@@ -823,7 +858,6 @@ public class PedidosApiController : BaseApiController
             if (lineaReq.Cantidad >= lineaOriginal.Cantidad)
             {
                 // Mover línea completa
-                lineaOriginal.FacturaId = 0; // Temporarily detach to move it? No, just add to new
                 pedidoOriginal.FacturaServicios.Remove(lineaOriginal);
                 nuevoPedido.FacturaServicios.Add(lineaOriginal);
                 montoRestado += lineaOriginal.Monto;
@@ -848,6 +882,17 @@ public class PedidosApiController : BaseApiController
                     Notas = lineaOriginal.Notas,
                     PrecioUnitario = lineaOriginal.PrecioUnitario
                 };
+                foreach (var opcion in lineaOriginal.OpcionesSeleccionadas)
+                {
+                    nuevaLinea.OpcionesSeleccionadas.Add(new FacturaServicioOpcionSeleccion
+                    {
+                        ProductoOpcionGrupoId = opcion.ProductoOpcionGrupoId,
+                        ProductoOpcionItemId = opcion.ProductoOpcionItemId,
+                        NombreGrupo = opcion.NombreGrupo,
+                        NombreOpcion = opcion.NombreOpcion,
+                        PrecioAdicional = opcion.PrecioAdicional
+                    });
+                }
                 nuevoPedido.FacturaServicios.Add(nuevaLinea);
                 montoRestado += montoMover;
             }

@@ -89,6 +89,8 @@ public class DeliveryApiController : BaseApiController
         if (errLineas != null)
             return FailResponse(errLineas, StatusCodes.Status400BadRequest);
 
+        pedido.Monto = pedido.FacturaServicios.Sum(fs => fs.Monto);
+
         return OkResponse(new
         {
             id = pedido.Id,
@@ -123,6 +125,8 @@ public class DeliveryApiController : BaseApiController
         var errLineas = _lineasService.ReemplazarLineas(_context, _inventarioService, pedido, request.Items, userId.Value, refPedido);
         if (errLineas != null)
             return FailResponse(errLineas, StatusCodes.Status400BadRequest);
+
+        pedido.Monto = pedido.FacturaServicios.Sum(fs => fs.Monto);
 
         pedido.ClienteId = request.ClienteId;
         pedido.DeliveryClienteNombre = request.ClienteNombre?.Trim();
@@ -294,43 +298,94 @@ public class DeliveryApiController : BaseApiController
             return FailResponse("No se puede enviar a cocina un pedido pagado o cancelado.", StatusCodes.Status409Conflict);
         if (!pedido.FacturaServicios.Any())
             return FailResponse("No se puede enviar a cocina un pedido sin items.", StatusCodes.Status400BadRequest);
-        if (!CocinaCatalogoHelper.OrdenTieneLineasCocina(pedido))
-            return FailResponse("No hay productos que requieran cocina en este pedido.", StatusCodes.Status400BadRequest);
-        if (pedido.EstadoCocina == SD.EstadoCocinaListo || pedido.EstadoCocina == SD.EstadoCocinaEntregado)
-            return FailResponse("La cocina ya marcó este pedido como listo o entregado.", StatusCodes.Status409Conflict);
 
-        var urlTicket = PublicRequestUrls.ImpresionCocinaAbsolute(Request, _configuration, pedido.Id);
+        var lineasCocina = CocinaCatalogoHelper.LineasCocina(pedido.FacturaServicios);
+        var lineasBar = CocinaCatalogoHelper.LineasBar(pedido.FacturaServicios);
 
-        if (pedido.Estado == SD.EstadoOrdenEnCocina && pedido.EstadoCocina == SD.EstadoCocinaEnPreparacion)
+        bool tieneCocina = lineasCocina.Any();
+        bool tieneBar = lineasBar.Any();
+
+        if (!tieneCocina && !tieneBar)
+            return FailResponse("El pedido no tiene artículos para cocina ni bar.", StatusCodes.Status400BadRequest);
+
+        bool tienePendientesCocina = lineasCocina.Any(l => l.Estado == SD.EstadoCocinaPendiente);
+        bool tienePendientesBar = lineasBar.Any(l => l.Estado == SD.EstadoCocinaPendiente);
+        bool tienePendientes = tienePendientesCocina || tienePendientesBar;
+
+        if (!tienePendientes)
         {
-            return OkResponse(new
+            // Si ya está entregado, no se puede reenviar — protección explícita.
+            if (pedido.EstadoCocina == SD.EstadoCocinaEntregado)
+                return FailResponse("La cocina ya marcó este pedido como entregado.", StatusCodes.Status409Conflict);
+
+            // Si está en preparación o listo, permite reimprimir el ticket.
+            if (pedido.EstadoCocina == SD.EstadoCocinaEnPreparacion || pedido.EstadoCocina == SD.EstadoCocinaListo)
             {
-                id = pedido.Id,
-                estado = pedido.Estado,
-                estadoCocina = pedido.EstadoCocina,
-                urlImpresionCocina = urlTicket
-            }, "Pedido ya estaba en cocina. Puede reimprimir el ticket.");
+                var urls = new Dictionary<string, string>();
+                if (tieneCocina) urls["urlImpresionCocina"] = $"/api/v1/impresion/cocina/{id}";
+                if (tieneBar) urls["urlImpresionBar"] = $"/api/v1/impresion/bar/{id}";
+
+                return OkResponse(new
+                {
+                    estadoCocina = pedido.EstadoCocina,
+                    impresionUrls = urls,
+                    urlImpresionCocina = tieneCocina ? urls["urlImpresionCocina"] : null,
+                    urlImpresionBar = tieneBar ? urls["urlImpresionBar"] : null
+                }, "Pedido ya estaba en preparación. Puede reimprimir el ticket.");
+            }
         }
 
         var ahora = DateTime.Now;
         pedido.Estado = SD.EstadoOrdenEnCocina;
         pedido.EstadoCocina = SD.EstadoCocinaEnPreparacion;
-        pedido.FechaEnvioCocina = ahora;
         pedido.FechaActualizacion = ahora;
 
-        foreach (var linea in CocinaCatalogoHelper.LineasCocina(pedido.FacturaServicios))
-            linea.Estado = SD.EstadoCocinaEnPreparacion;
+        var idsCocinaNuevos = new List<int>();
+        var idsBarNuevos = new List<int>();
+
+        if (tieneCocina)
+        {
+            foreach (var item in lineasCocina.Where(l => l.Estado == SD.EstadoCocinaPendiente))
+            {
+                idsCocinaNuevos.Add(item.Id);
+                item.Estado = SD.EstadoCocinaEnPreparacion;
+                item.FechaEnvioCocina = ahora;
+            }
+        }
+
+        if (tieneBar)
+        {
+            foreach (var item in lineasBar.Where(l => l.Estado == SD.EstadoCocinaPendiente))
+            {
+                idsBarNuevos.Add(item.Id);
+                item.Estado = SD.EstadoCocinaEnPreparacion;
+                item.FechaEnvioCocina = ahora;
+            }
+        }
 
         _context.SaveChanges();
 
+        var urlsNuevas = new Dictionary<string, string>();
+
+        string urlCocina = $"/api/v1/impresion/cocina/{id}";
+        if (idsCocinaNuevos.Count > 0)
+            urlCocina += "?lineas=" + string.Join(",", idsCocinaNuevos);
+
+        string urlBar = $"/api/v1/impresion/bar/{id}";
+        if (idsBarNuevos.Count > 0)
+            urlBar += "?lineas=" + string.Join(",", idsBarNuevos);
+
+        if (tieneCocina) urlsNuevas["urlImpresionCocina"] = urlCocina;
+        if (tieneBar) urlsNuevas["urlImpresionBar"] = urlBar;
+
         return OkResponse(new
         {
-            id = pedido.Id,
-            estado = pedido.Estado,
-            estadoCocina = pedido.EstadoCocina,
-            pedido.FechaEnvioCocina,
-            urlImpresionCocina = urlTicket
-        }, "Pedido enviado a cocina");
+            estado = SD.EstadoOrdenEnCocina,
+            estadoCocina = SD.EstadoCocinaEnPreparacion,
+            impresionUrls = urlsNuevas,
+            urlImpresionCocina = tieneCocina ? urlsNuevas["urlImpresionCocina"] : null,
+            urlImpresionBar = tieneBar ? urlsNuevas["urlImpresionBar"] : null
+        }, "Pedido enviado a cocina exitosamente.");
     }
 
     [HttpGet("pedidos/{id:int}/precuenta")]
@@ -354,6 +409,7 @@ public class DeliveryApiController : BaseApiController
         }, "Pre-cuenta delivery generada");
     }
 
+    [Authorize(Policy = "Cajero")]
     [HttpPost("pedidos/{id:int}/gestionar-pago")]
     public IActionResult GestionarPagoDelivery(int id, [FromBody] GestionarPagoVentaRequest request)
     {
@@ -361,6 +417,7 @@ public class DeliveryApiController : BaseApiController
         return EjecutarPagoDelivery(request, "Pago delivery gestionado");
     }
 
+    [Authorize(Policy = "Cajero")]
     [HttpPost("pedidos/{id:int}/procesar-pago")]
     public IActionResult ProcesarPagoDelivery(int id, [FromBody] ProcesarPagoVentaRequest request)
     {
@@ -754,6 +811,7 @@ public class DeliveryApiController : BaseApiController
                 subtotal = i.Monto,
                 estado = i.Estado,
                 notas = i.Notas,
+                fechaEnvioCocina = i.FechaEnvioCocina,
                 opcionesResumen = ProductoOpcionesLineaHelper.OpcionesResumen(i.OpcionesSeleccionadas),
                 opcionesSeleccionadas = ProductoOpcionesLineaHelper.MapOpcionesLineaRespuesta(i.OpcionesSeleccionadas)
             })

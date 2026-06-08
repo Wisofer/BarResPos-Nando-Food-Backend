@@ -20,12 +20,14 @@ public class VentasApiController : BaseApiController
         _context = context;
     }
 
+    [Authorize(Policy = "Cajero")]
     [HttpPost("gestionar-pago")]
     public IActionResult GestionarPago([FromBody] GestionarPagoVentaRequest request)
     {
         return EjecutarPago(request, "Pago gestionado");
     }
 
+    [Authorize(Policy = "Cajero")]
     [HttpPost("procesar-pago")]
     public IActionResult ProcesarPago([FromBody] ProcesarPagoVentaRequest request)
     {
@@ -53,6 +55,7 @@ public class VentasApiController : BaseApiController
             .FirstOrDefault(f => f.Id == request.OrdenId);
         if (orden == null) return FailResponse("Orden no encontrada.", StatusCodes.Status404NotFound);
         if (orden.Estado == SD.EstadoOrdenPagado) return FailResponse("La orden ya fue pagada.");
+        if (orden.Estado == SD.EstadoOrdenCancelado) return FailResponse("La orden fue cancelada y no puede ser procesada.");
         if (!orden.FacturaServicios.Any())
             return FailResponse("No se puede procesar/cobrar un pedido sin items.", StatusCodes.Status400BadRequest);
 

@@ -16,7 +16,7 @@ public class AuthApiController : BaseApiController
     private readonly IJwtTokenService _jwtTokenService;
     private readonly ApplicationDbContext _context;
     private readonly ILogger<AuthApiController> _logger;
-    private const int RefreshTokenDays = 15;
+    private const int RefreshTokenHours = 10;
 
     public AuthApiController(
         IAuthService authService,
@@ -63,7 +63,7 @@ public class AuthApiController : BaseApiController
             TokenHash = refreshTokenHash,
             JwtId = jwtToken.JwtId,
             CreadoEnUtc = DateTime.UtcNow,
-            ExpiraEnUtc = DateTime.UtcNow.AddDays(RefreshTokenDays)
+            ExpiraEnUtc = DateTime.UtcNow.AddHours(RefreshTokenHours)
         });
         _context.SaveChanges();
 
@@ -77,7 +77,7 @@ public class AuthApiController : BaseApiController
             AccessToken = jwtToken.Token,
             ExpiresAt = jwtToken.ExpiresAtUtc,
             RefreshToken = refreshTokenRaw,
-            RefreshTokenExpiresAt = DateTime.UtcNow.AddDays(RefreshTokenDays)
+            RefreshTokenExpiresAt = DateTime.UtcNow.AddHours(RefreshTokenHours)
         }, "Login exitoso");
     }
 
@@ -121,7 +121,7 @@ public class AuthApiController : BaseApiController
             TokenHash = newRefreshHash,
             JwtId = newJwt.JwtId,
             CreadoEnUtc = DateTime.UtcNow,
-            ExpiraEnUtc = DateTime.UtcNow.AddDays(RefreshTokenDays)
+            ExpiraEnUtc = DateTime.UtcNow.AddHours(RefreshTokenHours)
         });
         _context.SaveChanges();
 
@@ -130,7 +130,7 @@ public class AuthApiController : BaseApiController
             AccessToken = newJwt.Token,
             ExpiresAt = newJwt.ExpiresAtUtc,
             RefreshToken = newRefreshRaw,
-            RefreshTokenExpiresAt = DateTime.UtcNow.AddDays(RefreshTokenDays)
+            RefreshTokenExpiresAt = DateTime.UtcNow.AddHours(RefreshTokenHours)
         }, "Token renovado");
     }
 

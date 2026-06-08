@@ -37,14 +37,26 @@ public class ImpresionApiController : ControllerBase
         return string.IsNullOrWhiteSpace(nombre) ? fallback : nombre.Trim();
     }
 
+    private System.Collections.Generic.List<int>? ParseLineas(string? lineas)
+    {
+        if (string.IsNullOrWhiteSpace(lineas)) return null;
+        return lineas.Split(',', StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => int.TryParse(s.Trim(), out var n) ? n : (int?)null)
+            .Where(n => n.HasValue)
+            .Select(n => n!.Value)
+            .ToList();
+    }
+
+    [Authorize(Policy = "Cocina")]
     [HttpPost("cocina/{ordenId:int}")]
-    public IActionResult TicketCocina(int ordenId)
+    public IActionResult TicketCocina(int ordenId, [FromQuery] string? lineas)
     {
         try
         {
             var orden = _context.Facturas
                 .AsSplitQuery()
                 .Include(f => f.Mesa)
+                    .ThenInclude(m => m.Ubicacion)
                 .Include(f => f.Mesero)
                 .Include(f => f.FacturaServicios)
                 .ThenInclude(fs => fs.Servicio)
@@ -56,7 +68,8 @@ public class ImpresionApiController : ControllerBase
             if (orden == null)
                 return NotFound(new { mensaje = "Orden no encontrada" });
 
-            var bytes = _impresionService.GenerarTicketCocina(orden);
+            var lineasFilter = ParseLineas(lineas);
+            var bytes = _impresionService.GenerarTicketCocina(orden, lineasFilter);
             var printerName = ObtenerNombreImpresora("Tickets:ImpresoraCocina", "Cocina");
 
             bool ok = RawPrinterHelper.SendBytesToPrinter(printerName, bytes, $"Cocina-{orden.Numero}");
@@ -71,14 +84,16 @@ public class ImpresionApiController : ControllerBase
         }
     }
 
+    [Authorize(Policy = "Cocina")]
     [HttpPost("bar/{ordenId:int}")]
-    public IActionResult TicketBar(int ordenId)
+    public IActionResult TicketBar(int ordenId, [FromQuery] string? lineas)
     {
         try
         {
             var orden = _context.Facturas
                 .AsSplitQuery()
                 .Include(f => f.Mesa)
+                    .ThenInclude(m => m.Ubicacion)
                 .Include(f => f.Mesero)
                 .Include(f => f.FacturaServicios)
                 .ThenInclude(fs => fs.Servicio)
@@ -90,7 +105,8 @@ public class ImpresionApiController : ControllerBase
             if (orden == null)
                 return NotFound(new { mensaje = "Orden no encontrada" });
 
-            var bytes = _impresionService.GenerarTicketBar(orden);
+            var lineasFilter = ParseLineas(lineas);
+            var bytes = _impresionService.GenerarTicketBar(orden, lineasFilter);
             var printerName = ObtenerNombreImpresora("Tickets:ImpresoraBar", "Bar");
 
             bool ok = RawPrinterHelper.SendBytesToPrinter(printerName, bytes, $"Bar-{orden.Numero}");
@@ -105,6 +121,7 @@ public class ImpresionApiController : ControllerBase
         }
     }
 
+    [Authorize(Policy = "Cajero")]
     [HttpPost("recibo/{pagoId:int}")]
     public IActionResult TicketRecibo(int pagoId)
     {
@@ -114,6 +131,7 @@ public class ImpresionApiController : ControllerBase
                 .AsSplitQuery()
                 .Include(p => p.Factura)
                 .ThenInclude(f => f.Mesa)
+                .ThenInclude(m => m.Ubicacion)
                 .Include(p => p.Factura)
                 .ThenInclude(f => f.FacturaServicios)
                 .ThenInclude(fs => fs.Servicio)
@@ -140,6 +158,7 @@ public class ImpresionApiController : ControllerBase
         }
     }
 
+    [Authorize]
     [HttpPost("comanda/{ordenId:int}")]
     public IActionResult TicketComanda(int ordenId)
     {
@@ -148,6 +167,7 @@ public class ImpresionApiController : ControllerBase
             var orden = _context.Facturas
                 .AsSplitQuery()
                 .Include(f => f.Mesa)
+                    .ThenInclude(m => m.Ubicacion)
                 .Include(f => f.Mesero)
                 .Include(f => f.FacturaServicios)
                 .ThenInclude(fs => fs.Servicio)
@@ -173,6 +193,7 @@ public class ImpresionApiController : ControllerBase
         }
     }
 
+    [Authorize]
     [HttpGet("comanda/{ordenId:int}/preview")]
     public IActionResult PreviewComanda(int ordenId)
     {
@@ -182,6 +203,7 @@ public class ImpresionApiController : ControllerBase
                 .AsNoTracking()
                 .AsSplitQuery()
                 .Include(f => f.Mesa)
+                    .ThenInclude(m => m.Ubicacion)
                 .Include(f => f.Mesero)
                 .Include(f => f.FacturaServicios)
                 .ThenInclude(fs => fs.Servicio)
@@ -202,6 +224,7 @@ public class ImpresionApiController : ControllerBase
         }
     }
 
+    [Authorize(Policy = "Cajero")]
     [HttpGet("recibo/{pagoId:int}/preview")]
     public IActionResult PreviewRecibo(int pagoId)
     {
@@ -212,6 +235,7 @@ public class ImpresionApiController : ControllerBase
                 .AsSplitQuery()
                 .Include(p => p.Factura)
                 .ThenInclude(f => f.Mesa)
+                .ThenInclude(m => m.Ubicacion)
                 .Include(p => p.Factura)
                 .ThenInclude(f => f.FacturaServicios)
                 .ThenInclude(fs => fs.Servicio)
@@ -229,6 +253,70 @@ public class ImpresionApiController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al generar preview de recibo");
+            return BadRequest(new { mensaje = "Error interno al generar previsualización" });
+        }
+    }
+
+    [Authorize(Policy = "Cocina")]
+    [HttpGet("cocina/{ordenId:int}/preview")]
+    public IActionResult PreviewCocina(int ordenId, [FromQuery] string? lineas)
+    {
+        try
+        {
+            var orden = _context.Facturas
+                .AsNoTracking()
+                .AsSplitQuery()
+                .Include(f => f.Mesa)
+                    .ThenInclude(m => m.Ubicacion)
+                .Include(f => f.Mesero)
+                .Include(f => f.FacturaServicios)
+                .ThenInclude(fs => fs.Servicio)
+                .Include(f => f.FacturaServicios)
+                .ThenInclude(fs => fs.OpcionesSeleccionadas)
+                .FirstOrDefault(f => f.Id == ordenId);
+
+            if (orden == null)
+                return NotFound(new { mensaje = "Orden no encontrada" });
+
+            var lineasFilter = ParseLineas(lineas);
+            var texto = _impresionService.GenerarPreviewCocina(orden, lineasFilter);
+            return Ok(new { preview = texto });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al generar preview de cocina");
+            return BadRequest(new { mensaje = "Error interno al generar previsualización" });
+        }
+    }
+
+    [Authorize(Policy = "Cocina")]
+    [HttpGet("bar/{ordenId:int}/preview")]
+    public IActionResult PreviewBar(int ordenId, [FromQuery] string? lineas)
+    {
+        try
+        {
+            var orden = _context.Facturas
+                .AsNoTracking()
+                .AsSplitQuery()
+                .Include(f => f.Mesa)
+                    .ThenInclude(m => m.Ubicacion)
+                .Include(f => f.Mesero)
+                .Include(f => f.FacturaServicios)
+                .ThenInclude(fs => fs.Servicio)
+                .Include(f => f.FacturaServicios)
+                .ThenInclude(fs => fs.OpcionesSeleccionadas)
+                .FirstOrDefault(f => f.Id == ordenId);
+
+            if (orden == null)
+                return NotFound(new { mensaje = "Orden no encontrada" });
+
+            var lineasFilter = ParseLineas(lineas);
+            var texto = _impresionService.GenerarPreviewBar(orden, lineasFilter);
+            return Ok(new { preview = texto });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al generar preview de bar");
             return BadRequest(new { mensaje = "Error interno al generar previsualización" });
         }
     }

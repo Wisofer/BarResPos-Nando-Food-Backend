@@ -80,7 +80,6 @@ public static class SecurityHelper
         {
             SD.RolAdministrador => "/",
             SD.RolMesero => "/mesas",        // Mesero va a Mesas
-            SD.RolBartender => "/mesas",     // Bartender también va a Mesas
             SD.RolCocinero => "/cocina",     // Cocinero va a Cocina
             SD.RolCajero => "/caja",         // Cajero va a Caja
             SD.RolNormal => "/facturas",     // Rol antiguo (compatibilidad)

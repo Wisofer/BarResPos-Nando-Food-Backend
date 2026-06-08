@@ -7,7 +7,6 @@ public static class SD
     public const string RolMesero = "Mesero";
     public const string RolCocinero = "Cocinero";
     public const string RolCajero = "Cajero";
-    public const string RolBartender = "Bartender";
     
     // Roles antiguos (mantener por compatibilidad)
     public const string RolNormal = "Normal";
