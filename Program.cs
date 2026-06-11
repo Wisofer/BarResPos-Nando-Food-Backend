@@ -39,7 +39,7 @@ if (!Directory.Exists(appDataFolder))
     Directory.CreateDirectory(appDataFolder);
 }
 string persistentDbPath = Path.Combine(appDataFolder, "barrestpos.db");
-string connectionString = $"Data Source={persistentDbPath}";
+string connectionString = $"Data Source={persistentDbPath};Cache=Shared;Mode=ReadWriteCreate;";
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
@@ -178,7 +178,8 @@ using (var scope = app.Services.CreateScope())
                 // Asegurar la existencia e inyección de migraciones automáticas en la base de datos local SQLite de AppData
                 logger.LogInformation("Aplicando migraciones automáticas en SQLite local en AppData...");
                 dbContext.Database.Migrate();
-                logger.LogInformation("Base de datos SQLite lista y actualizada.");
+                dbContext.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
+                logger.LogInformation("Base de datos SQLite lista y actualizada en modo WAL.");
 
                 // Realizar un respaldo automático rápido al iniciar el sistema
                 BarRestPOS.Utils.BackupHelper.CrearRespaldo("inicio");

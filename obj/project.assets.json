@@ -1160,7 +1160,7 @@
           }
         }
       },
-      "SixLabors.ImageSharp/2.1.9": {
+      "SixLabors.ImageSharp/2.1.10": {
         "type": "package",
         "dependencies": {
           "System.Runtime.CompilerServices.Unsafe": "5.0.0",
@@ -4071,10 +4071,10 @@
         "runtimes/win-x86/native/QuestPdfSkia.dll"
       ]
     },
-    "SixLabors.ImageSharp/2.1.9": {
-      "sha512": "VcjfKbOExie3RgZGrQL1jJMI4iZ3J9B6ifDo2QpDVJUYhTZKVcKnBhpNOHqbvNjHgadAks1jzhRjB7OZet1PJA==",
+    "SixLabors.ImageSharp/2.1.10": {
+      "sha512": "hk1E7U3RSlxrBVo6Gb6OjeM52fChpFYH+SZvyT/M2vzSGlzAaKE33hc3V/Pvnjcnn1opT8/Z+0QfqdM5HsIaeA==",
       "type": "package",
-      "path": "sixlabors.imagesharp/2.1.9",
+      "path": "sixlabors.imagesharp/2.1.10",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -4089,7 +4089,7 @@
         "lib/netstandard2.1/SixLabors.ImageSharp.dll",
         "lib/netstandard2.1/SixLabors.ImageSharp.xml",
         "sixlabors.imagesharp.128.png",
-        "sixlabors.imagesharp.2.1.9.nupkg.sha512",
+        "sixlabors.imagesharp.2.1.10.nupkg.sha512",
         "sixlabors.imagesharp.nuspec"
       ]
     },
@@ -4914,7 +4914,7 @@
       "Microsoft.Extensions.Configuration.Json >= 9.0.0",
       "Npgsql.EntityFrameworkCore.PostgreSQL >= 9.0.0",
       "QuestPDF >= 2024.10.1",
-      "SixLabors.ImageSharp >= 2.1.9",
+      "SixLabors.ImageSharp >= 2.1.10",
       "Swashbuckle.AspNetCore >= 10.1.7"
     ]
   },
@@ -4997,7 +4997,7 @@
           },
           "SixLabors.ImageSharp": {
             "target": "Package",
-            "version": "[2.1.9, )"
+            "version": "[2.1.10, )"
           },
           "Swashbuckle.AspNetCore": {
             "target": "Package",
@@ -5029,20 +5029,10 @@
   },
   "logs": [
     {
-      "code": "NU1903",
-      "level": "Warning",
-      "warningLevel": 1,
-      "message": "El paquete \"SixLabors.ImageSharp\" 2.1.9 tiene una vulnerabilidad de gravedad alta conocida, https://github.com/advisories/GHSA-2cmq-823j-5qj8",
-      "libraryId": "SixLabors.ImageSharp",
-      "targetGraphs": [
-        "net9.0"
-      ]
-    },
-    {
       "code": "NU1902",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "El paquete \"SixLabors.ImageSharp\" 2.1.9 tiene una vulnerabilidad de gravedad moderada conocida, https://github.com/advisories/GHSA-rxmq-m78w-7wmc",
+      "message": "El paquete \"SixLabors.ImageSharp\" 2.1.10 tiene una vulnerabilidad de gravedad moderada conocida, https://github.com/advisories/GHSA-rxmq-m78w-7wmc",
       "libraryId": "SixLabors.ImageSharp",
       "targetGraphs": [
         "net9.0"

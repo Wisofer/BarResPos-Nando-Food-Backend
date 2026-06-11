@@ -16,7 +16,7 @@
           "Microsoft.Extensions.Configuration.Json": "9.0.0",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "9.0.0",
           "QuestPDF": "2024.10.1",
-          "SixLabors.ImageSharp": "2.1.9",
+          "SixLabors.ImageSharp": "2.1.10",
           "Swashbuckle.AspNetCore": "10.1.7"
         },
         "runtime": {
@@ -763,7 +763,7 @@
           }
         }
       },
-      "SixLabors.ImageSharp/2.1.9": {
+      "SixLabors.ImageSharp/2.1.10": {
         "dependencies": {
           "System.Runtime.CompilerServices.Unsafe": "6.0.0",
           "System.Text.Encoding.CodePages": "8.0.0"
@@ -771,7 +771,7 @@
         "runtime": {
           "lib/netcoreapp3.1/SixLabors.ImageSharp.dll": {
             "assemblyVersion": "2.0.0.0",
-            "fileVersion": "2.1.9.0"
+            "fileVersion": "2.1.10.0"
           }
         }
       },
@@ -1447,12 +1447,12 @@
       "path": "questpdf/2024.10.1",
       "hashPath": "questpdf.2024.10.1.nupkg.sha512"
     },
-    "SixLabors.ImageSharp/2.1.9": {
+    "SixLabors.ImageSharp/2.1.10": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-VcjfKbOExie3RgZGrQL1jJMI4iZ3J9B6ifDo2QpDVJUYhTZKVcKnBhpNOHqbvNjHgadAks1jzhRjB7OZet1PJA==",
-      "path": "sixlabors.imagesharp/2.1.9",
-      "hashPath": "sixlabors.imagesharp.2.1.9.nupkg.sha512"
+      "sha512": "sha512-hk1E7U3RSlxrBVo6Gb6OjeM52fChpFYH+SZvyT/M2vzSGlzAaKE33hc3V/Pvnjcnn1opT8/Z+0QfqdM5HsIaeA==",
+      "path": "sixlabors.imagesharp/2.1.10",
+      "hashPath": "sixlabors.imagesharp.2.1.10.nupkg.sha512"
     },
     "SQLitePCLRaw.bundle_e_sqlite3/2.1.10": {
       "type": "package",
