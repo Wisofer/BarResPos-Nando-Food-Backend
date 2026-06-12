@@ -234,6 +234,16 @@ using (var scope = app.Services.CreateScope())
             "Nombre comercial del restaurante/bar para los tickets impresos y digitales"
         );
         configuracionService.CrearSiNoExiste(
+            "Tickets:DireccionRestaurante",
+            "Managua, Nicaragua",
+            "Dirección física del restaurante/bar para los tickets impresos y digitales"
+        );
+        configuracionService.CrearSiNoExiste(
+            "Tickets:TelefonoRestaurante",
+            "+505 8888-8888",
+            "Teléfono de contacto del restaurante/bar para los tickets impresos y digitales"
+        );
+        configuracionService.CrearSiNoExiste(
             SD.ConfigClavePinCancelacionPedidos,
             "0000",
             "PIN para autorizar cancelación de pedidos (cambiar en producción)"

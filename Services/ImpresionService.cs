@@ -43,6 +43,36 @@ public class ImpresionService : IImpresionService
         return nombre;
     }
 
+    private string ObtenerDireccionRestaurante()
+    {
+        var direccion = _context.Configuraciones
+            .AsNoTracking()
+            .Where(c => c.Clave == "Tickets:DireccionRestaurante")
+            .Select(c => c.Valor)
+            .FirstOrDefault()?.Trim();
+            
+        if (string.IsNullOrEmpty(direccion))
+        {
+            direccion = _configuration["Tickets:DireccionRestaurante"]?.Trim() ?? "";
+        }
+        return direccion;
+    }
+
+    private string ObtenerTelefonoRestaurante()
+    {
+        var telefono = _context.Configuraciones
+            .AsNoTracking()
+            .Where(c => c.Clave == "Tickets:TelefonoRestaurante")
+            .Select(c => c.Valor)
+            .FirstOrDefault()?.Trim();
+            
+        if (string.IsNullOrEmpty(telefono))
+        {
+            telefono = _configuration["Tickets:TelefonoRestaurante"]?.Trim() ?? "";
+        }
+        return telefono;
+    }
+
     private string ObtenerLogoFisico()
     {
         var logoUrl = _context.Configuraciones
@@ -81,13 +111,26 @@ public class ImpresionService : IImpresionService
             esc.PrintImage(logoPath);
         }
 
-        return esc.AlignCenter()
+        esc.AlignCenter()
            .DoubleSizeFont()
            .BoldOn()
            .PrintLine(nombreRest)
            .NormalFont()
-           .BoldOff()
-           .DrawDivider()
+           .BoldOff();
+
+        var direccion = ObtenerDireccionRestaurante();
+        if (!string.IsNullOrEmpty(direccion))
+        {
+            esc.PrintLine(direccion);
+        }
+
+        var telefono = ObtenerTelefonoRestaurante();
+        if (!string.IsNullOrEmpty(telefono))
+        {
+            esc.PrintLine($"TEL: {telefono}");
+        }
+
+        return esc.DrawDivider()
            .AlignLeft()
            .BoldOn()
            .PrintLine($"{tipoTicket}: {numero}")
