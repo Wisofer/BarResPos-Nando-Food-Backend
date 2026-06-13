@@ -257,6 +257,49 @@ public class ImpresionApiController : ControllerBase
         }
     }
 
+    [Authorize(Policy = "Cajero")]
+    [HttpPost("corte/{cierreId:int}")]
+    public async Task<IActionResult> TicketCorte(int cierreId, [FromServices] ICajaService cajaService)
+    {
+        try
+        {
+            var cierre = await cajaService.ObtenerCierrePorIdAsync(cierreId);
+            if (cierre == null) return NotFound(new { mensaje = "Cierre no encontrado" });
+
+            var bytes = _impresionService.GenerarTicketCorte(cierre);
+            var printerName = ObtenerNombreImpresora("Tickets:ImpresoraCaja", "Caja");
+
+            bool ok = RawPrinterHelper.SendBytesToPrinter(printerName, bytes, $"Corte-{cierre.Id}");
+            
+            if (!ok) return BadRequest(new { mensaje = $"Error al imprimir. Verifique impresora: {printerName}" });
+            return Ok(new { mensaje = "Corte de caja impreso con éxito", impresora = printerName });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al generar ticket de corte de caja");
+            return BadRequest(new { mensaje = "Error interno al imprimir" });
+        }
+    }
+
+    [Authorize(Policy = "Cajero")]
+    [HttpGet("corte/{cierreId:int}/preview")]
+    public async Task<IActionResult> PreviewCorte(int cierreId, [FromServices] ICajaService cajaService)
+    {
+        try
+        {
+            var cierre = await cajaService.ObtenerCierrePorIdAsync(cierreId);
+            if (cierre == null) return NotFound(new { mensaje = "Cierre no encontrado" });
+
+            var texto = _impresionService.GenerarPreviewCorte(cierre);
+            return Ok(new { preview = texto });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al generar preview de corte");
+            return BadRequest(new { mensaje = "Error interno al generar previsualización" });
+        }
+    }
+
     [Authorize(Policy = "Cocina")]
     [HttpGet("cocina/{ordenId:int}/preview")]
     public IActionResult PreviewCocina(int ordenId, [FromQuery] string? lineas)

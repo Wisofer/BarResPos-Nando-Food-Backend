@@ -175,12 +175,25 @@ public class ImpresionService : IImpresionService
            .BoldOff()
            .AlignLeft();
 
-        var ubicacionNombre = orden.Mesa?.Ubicacion?.Nombre?.ToUpper() ?? "";
-        var mesaStr = $"MESA: {orden.Mesa?.Numero ?? "S/M"}";
-        if (!string.IsNullOrEmpty(ubicacionNombre))
+        string mesaStr;
+        if (orden.OrigenPedido == SD.OrigenPedidoDelivery)
         {
-            mesaStr += $" [{ubicacionNombre}]";
+            mesaStr = "ORIGEN: DELIVERY";
         }
+        else if (!string.IsNullOrEmpty(orden.OrigenPedido) && orden.OrigenPedido.Trim().ToLower() != "salon")
+        {
+            mesaStr = $"ORIGEN: {orden.OrigenPedido.ToUpper()}";
+        }
+        else
+        {
+            var ubicacionNombre = orden.Mesa?.Ubicacion?.Nombre?.ToUpper() ?? "";
+            mesaStr = $"MESA: {orden.Mesa?.Numero ?? "S/M"}";
+            if (!string.IsNullOrEmpty(ubicacionNombre))
+            {
+                mesaStr += $" [{ubicacionNombre}]";
+            }
+        }
+        
         var ordenStr = $"ORDEN: #{numero}";
 
         var horaStr = $"HORA: {fecha:HH:mm (dd/MM)}";
@@ -390,9 +403,53 @@ public class ImpresionService : IImpresionService
     public byte[] GenerarTicketCocina(Factura orden, List<int>? lineasFilter = null) => BuildTicketCocina(orden, lineasFilter).GetBytes();
     public byte[] GenerarTicketBar(Factura orden, List<int>? lineasFilter = null) => BuildTicketBar(orden, lineasFilter).GetBytes();
 
+    private EscPosBuilder ConstruirCabeceraDelivery(string numero, Factura orden, DateTime fecha)
+    {
+        var esc = new EscPosBuilder();
+        var nombreRest = ObtenerNombreRestaurante();
+        var logoPath = ObtenerLogoFisico();
+
+        if (!string.IsNullOrEmpty(logoPath))
+            esc.PrintImage(logoPath);
+
+        esc.AlignCenter()
+           .DoubleSizeFont()
+           .BoldOn()
+           .PrintLine(nombreRest)
+           .NormalFont()
+           .BoldOff();
+
+        var direccion = ObtenerDireccionRestaurante();
+        if (!string.IsNullOrEmpty(direccion))
+            esc.PrintLine(direccion);
+
+        var telefono = ObtenerTelefonoRestaurante();
+        if (!string.IsNullOrEmpty(telefono))
+            esc.PrintLine($"TEL: {telefono}");
+
+        return esc.DrawDivider()
+           .AlignCenter()
+           .BoldOn()
+           .PrintLine("** DELIVERY **")
+           .NormalFont()
+           .BoldOff()
+           .AlignLeft()
+           .PrintLine($"ORDEN:   #{numero}")
+           .BoldOn()
+           .PrintLine($"CLIENTE: {orden.DeliveryClienteNombre ?? "N/A"}")
+           .BoldOff()
+           .PrintLine($"TEL:     {orden.DeliveryClienteTelefono ?? "N/A"}")
+           .PrintLine($"DIR:     {orden.DeliveryClienteDireccion ?? "N/A"}")
+           .PrintLine($"FECHA:   {fecha:dd/MM/yyyy HH:mm}")
+           .DrawDivider();
+    }
+
     private EscPosBuilder BuildRecibo(Pago pago, Factura orden)
     {
-        var esc = ConstruirCabecera("RECIBO", orden.Numero, orden, pago.FechaPago);
+        var esDelivery = orden.OrigenPedido == SD.OrigenPedidoDelivery;
+        var esc = esDelivery
+            ? ConstruirCabeceraDelivery(orden.Numero, orden, pago.FechaPago)
+            : ConstruirCabecera("RECIBO", orden.Numero, orden, pago.FechaPago);
 
         esc.BoldOn()
            .Print3Columns("CANT", "PRODUCTO", "PRECIO")
@@ -424,7 +481,13 @@ public class ImpresionService : IImpresionService
            .BoldOff()
            .DrawDivider();
 
-        ConstruirPiePagina(esc, "¡Gracias por su visita!");
+        string monedaSimbolo = pago.Moneda == "USD" ? "$" : "C$";
+        string tipoPagoTexto = string.IsNullOrWhiteSpace(pago.TipoPago) ? "Efectivo" : pago.TipoPago;
+        esc.PrintColumns($"PAGO CON: {tipoPagoTexto}", $"{monedaSimbolo}{pago.MontoRecibido:N2}")
+           .PrintColumns("VUELTO:", $"C${pago.Vuelto:N2}")
+           .DrawDivider();
+
+        ConstruirPiePagina(esc, esDelivery ? "¡Gracias por su pedido!" : "¡Gracias por su visita!");
         return esc;
     }
 
@@ -442,7 +505,10 @@ public class ImpresionService : IImpresionService
 
     private EscPosBuilder BuildComanda(Factura orden)
     {
-        var esc = ConstruirCabecera("COMANDA", orden.Numero, orden, orden.FechaCreacion);
+        var esDelivery = orden.OrigenPedido == SD.OrigenPedidoDelivery;
+        var esc = esDelivery
+            ? ConstruirCabeceraDelivery(orden.Numero, orden, orden.FechaCreacion)
+            : ConstruirCabecera("COMANDA", orden.Numero, orden, orden.FechaCreacion);
 
         esc.BoldOn()
            .Print3Columns("CANT", "PRODUCTO", "PRECIO")
@@ -470,12 +536,99 @@ public class ImpresionService : IImpresionService
            .BoldOff()
            .DrawDivider();
 
-        ConstruirPiePagina(esc, "Comanda para mesero");
+        ConstruirPiePagina(esc, esDelivery ? "Comanda Delivery" : "Comanda para mesero");
         return esc;
     }
 
     public byte[] GenerarTicketComanda(Factura orden) => BuildComanda(orden).GetBytes();
-    public string GenerarPreviewComanda(Factura orden) => BuildComanda(orden).GetPlainText();
-    public string GenerarPreviewCocina(Factura orden, List<int>? lineasFilter = null) => BuildTicketCocina(orden, lineasFilter).GetPlainText();
-    public string GenerarPreviewBar(Factura orden, List<int>? lineasFilter = null) => BuildTicketBar(orden, lineasFilter).GetPlainText();
+    public string GenerarPreviewComanda(Factura orden)
+    {
+        return BuildComanda(orden).GetPlainText();
+    }
+
+    public string GenerarPreviewCocina(Factura orden, List<int>? lineasFilter = null)
+    {
+        return BuildTicketCocina(orden, lineasFilter).GetPlainText();
+    }
+
+    public string GenerarPreviewBar(Factura orden, List<int>? lineasFilter = null)
+    {
+        return BuildTicketBar(orden, lineasFilter).GetPlainText();
+    }
+
+    private EscPosBuilder BuildTicketCorte(CierreCaja cierre)
+    {
+        var esc = new EscPosBuilder();
+        var nombreRest = ObtenerNombreRestaurante();
+        var logoPath = ObtenerLogoFisico();
+
+        if (!string.IsNullOrEmpty(logoPath))
+        {
+            esc.PrintImage(logoPath);
+        }
+
+        esc.AlignCenter()
+           .DoubleSizeFont()
+           .BoldOn()
+           .PrintLine(nombreRest)
+           .NormalFont()
+           .BoldOff();
+
+        var direccion = ObtenerDireccionRestaurante();
+        if (!string.IsNullOrEmpty(direccion))
+        {
+            esc.PrintLine(direccion);
+        }
+
+        var telefono = ObtenerTelefonoRestaurante();
+        if (!string.IsNullOrEmpty(telefono))
+        {
+            esc.PrintLine($"TEL: {telefono}");
+        }
+
+        esc.DrawDivider()
+           .AlignCenter()
+           .BoldOn()
+           .PrintLine("CORTE DE CAJA")
+           .BoldOff()
+           .DrawDivider()
+           .AlignLeft()
+           .PrintLine($"FECHA: {cierre.FechaHoraCierre:dd/MM/yyyy HH:mm}")
+           .PrintLine($"CAJERO: {cierre.Usuario?.NombreCompleto ?? "N/A"}")
+           .DrawDivider()
+           .PrintColumns("FONDO INICIAL:", $"C$ {cierre.MontoInicial ?? 0:N2}")
+           .PrintColumns("TOTAL VENTAS (INGRESOS):", $"C$ {cierre.TotalGeneral:N2}")
+           // Propinas can't be easily deduced from CierreCaja without further properties. Skipping or adding as 0 if not tracked natively here.
+           // Total propinas no está mapeado directamente en CierreCaja. Omitimos.
+           .DrawDivider()
+           .PrintColumns("EFECTIVO EN CAJA:", $"C$ {cierre.TotalEfectivo:N2}")
+           .PrintColumns("TARJETA:", $"C$ {cierre.TotalTarjeta:N2}");
+           
+        if (cierre.TotalTransferencia > 0)
+        {
+            esc.PrintColumns("TRANSFERENCIA:", $"C$ {cierre.TotalTransferencia:N2}");
+        }
+
+        esc.DrawDivider()
+           .PrintColumns("TOTAL ESPERADO:", $"C$ {cierre.MontoEsperado:N2}")
+           .PrintColumns("TOTAL DECLARADO:", $"C$ {cierre.MontoReal ?? 0:N2}");
+
+        var difStr = cierre.Diferencia.HasValue ? $"C$ {cierre.Diferencia.Value:N2}" : "N/D";
+        esc.PrintColumns("DIFERENCIA:", difStr)
+           .DrawDivider()
+           .AlignCenter()
+           .PrintLine("FIN DEL REPORTE")
+           .PrintLine(DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss"))
+           .FeedLines(4)
+           .CutPaper();
+
+        return esc;
+    }
+
+    public byte[] GenerarTicketCorte(CierreCaja cierre) => BuildTicketCorte(cierre).GetBytes();
+    
+    public string GenerarPreviewCorte(CierreCaja cierre)
+    {
+        return BuildTicketCorte(cierre).GetPlainText();
+    }
 }

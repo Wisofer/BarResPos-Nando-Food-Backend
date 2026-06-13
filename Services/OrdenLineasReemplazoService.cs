@@ -123,17 +123,20 @@ public class OrdenLineasReemplazoService
             // SMART MERGE LOGIC INSTEAD OF RemoveRange
             var lineasAEliminar = new List<FacturaServicio>();
             var lineasActualizadas = new List<FacturaServicio>();
+            var lineasConsumidas = new List<ActualizarPedidoItemRequest>();
 
             foreach (var fs in pedido.FacturaServicios.ToList())
             {
                 var matchedReq = items.FirstOrDefault(item => 
                     item.ServicioId == fs.ServicioId &&
                     (fs.Notas ?? "").Trim() == (item.Notas ?? "").Trim() &&
-                    OpcionesSonIguales(item.OpcionesSeleccionadas, fs.OpcionesSeleccionadas)
+                    OpcionesSonIguales(item.OpcionesSeleccionadas, fs.OpcionesSeleccionadas) &&
+                    !lineasConsumidas.Contains(item)
                 );
 
                 if (matchedReq != null)
                 {
+                    lineasConsumidas.Add(matchedReq);
                     fs.Cantidad = matchedReq.Cantidad;
                     fs.Monto = Math.Round(fs.PrecioUnitario * matchedReq.Cantidad, 2, MidpointRounding.AwayFromZero);
                     
@@ -154,13 +157,7 @@ public class OrdenLineasReemplazoService
 
             foreach (var item in items)
             {
-                bool yaActualizado = lineasActualizadas.Any(fs => 
-                    fs.ServicioId == item.ServicioId &&
-                    (fs.Notas ?? "").Trim() == (item.Notas ?? "").Trim() &&
-                    OpcionesSonIguales(item.OpcionesSeleccionadas, fs.OpcionesSeleccionadas)
-                );
-
-                if (!yaActualizado)
+                if (!lineasConsumidas.Contains(item))
                 {
                     var producto = productos[item.ServicioId];
                     var seleccionesDto = (item.OpcionesSeleccionadas ?? new List<OpcionSeleccionRequest>())

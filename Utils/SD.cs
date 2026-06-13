@@ -14,7 +14,7 @@ public static class SD
 
     // ========== ESTADOS DE ORDEN ==========
     public const string EstadoOrdenPendiente = "Pendiente";
-    public const string EstadoOrdenEnCocina = "En Cocina";
+    public const string EstadoOrdenEnCocina = "En Curso";
     public const string EstadoOrdenListo = "Listo";
     public const string EstadoOrdenServido = "Servido";
     public const string EstadoOrdenPagado = "Pagado";

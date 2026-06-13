@@ -46,5 +46,15 @@ public interface IImpresionService
     /// Genera texto plano estructurado del ticket de bar para previsualización
     /// </summary>
     string GenerarPreviewBar(Factura orden, System.Collections.Generic.List<int>? lineasFilter = null);
+
+    /// <summary>
+    /// Genera los bytes ESC/POS del ticket de cierre de caja
+    /// </summary>
+    byte[] GenerarTicketCorte(CierreCaja cierre);
+
+    /// <summary>
+    /// Genera texto plano estructurado del ticket de cierre de caja para previsualización
+    /// </summary>
+    string GenerarPreviewCorte(CierreCaja cierre);
 }
 
