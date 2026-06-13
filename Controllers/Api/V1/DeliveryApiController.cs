@@ -89,7 +89,7 @@ public class DeliveryApiController : BaseApiController
         if (errLineas != null)
             return FailResponse(errLineas, StatusCodes.Status400BadRequest);
 
-        pedido.Monto = pedido.FacturaServicios.Sum(fs => fs.Monto);
+
 
         return OkResponse(new
         {
@@ -126,7 +126,7 @@ public class DeliveryApiController : BaseApiController
         if (errLineas != null)
             return FailResponse(errLineas, StatusCodes.Status400BadRequest);
 
-        pedido.Monto = pedido.FacturaServicios.Sum(fs => fs.Monto);
+
 
         pedido.ClienteId = request.ClienteId;
         pedido.DeliveryClienteNombre = request.ClienteNombre?.Trim();
