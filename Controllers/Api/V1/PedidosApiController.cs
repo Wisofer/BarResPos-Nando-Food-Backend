@@ -442,7 +442,7 @@ public class PedidosApiController : BaseApiController
             {
                 i.Id,
                 i.ServicioId,
-                Servicio = i.Servicio.Nombre,
+                Servicio = i.Servicio != null ? i.Servicio.Nombre : "Producto eliminado",
                 i.Cantidad,
                 i.PrecioUnitario,
                 i.Monto,
@@ -494,24 +494,14 @@ public class PedidosApiController : BaseApiController
 
         if (!tienePendientes)
         {
-            // Si ya está entregado, no se puede reenviar — protección explícita.
+            // Si ya está entregado, no se puede reenviar
             if (pedido.EstadoCocina == SD.EstadoCocinaEntregado)
                 return FailResponse("La cocina ya marcó este pedido como entregado.", StatusCodes.Status409Conflict);
 
-            // Si está en preparación o listo, permite reimprimir el ticket.
+            // Si está en preparación o listo y no hay nada nuevo, bloqueamos el reenvío
             if (pedido.EstadoCocina == SD.EstadoCocinaEnPreparacion || pedido.EstadoCocina == SD.EstadoCocinaListo)
             {
-                var urls = new Dictionary<string, string>();
-                if (tieneCocina) urls["urlImpresionCocina"] = $"/api/v1/impresion/cocina/{id}";
-                if (tieneBar) urls["urlImpresionBar"] = $"/api/v1/impresion/bar/{id}";
-
-                return OkResponse(new
-                {
-                    estadoCocina = pedido.EstadoCocina,
-                    impresionUrls = urls,
-                    urlImpresionCocina = tieneCocina ? urls["urlImpresionCocina"] : null,
-                    urlImpresionBar = tieneBar ? urls["urlImpresionBar"] : null
-                }, "Pedido ya estaba en preparación. Puede reimprimir el ticket.");
+                return FailResponse("El pedido ya fue enviado a cocina. Agregue nuevos productos si desea hacer una adición.", StatusCodes.Status409Conflict);
             }
         }
 
@@ -580,6 +570,7 @@ public class PedidosApiController : BaseApiController
     {
         var pedido = _context.Facturas
             .Include(f => f.FacturaServicios)
+                .ThenInclude(fs => fs.OpcionesSeleccionadas)
             .FirstOrDefault(f => f.Id == id);
         if (pedido == null) return FailResponse("Pedido no encontrado.", StatusCodes.Status404NotFound);
         if (pedido.Estado == SD.EstadoOrdenPagado || pedido.Estado == SD.EstadoOrdenCancelado)
@@ -822,6 +813,7 @@ public class PedidosApiController : BaseApiController
 
         var pedidoOriginal = _context.Facturas
             .Include(f => f.FacturaServicios)
+                .ThenInclude(fs => fs.OpcionesSeleccionadas)
             .FirstOrDefault(f => f.Id == id);
 
         if (pedidoOriginal == null)
@@ -866,7 +858,7 @@ public class PedidosApiController : BaseApiController
             {
                 // Split cantidad
                 decimal precioUnitario = lineaOriginal.Monto / lineaOriginal.Cantidad;
-                decimal montoMover = precioUnitario * lineaReq.Cantidad;
+                decimal montoMover = Math.Round(precioUnitario * lineaReq.Cantidad, 2, MidpointRounding.AwayFromZero);
 
                 // Restar a original
                 lineaOriginal.Cantidad -= lineaReq.Cantidad;

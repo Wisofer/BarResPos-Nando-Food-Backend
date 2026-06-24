@@ -60,52 +60,25 @@ public class CajaService : ICajaService
         if (hayAbierta) throw new Exception("Ya existe una caja abierta en el sistema. Debe cerrar la caja actual antes de abrir una nueva.");
 
         var hoy = DateTime.Today;
-        var cierre = await _context.CierresCaja
-            .Where(c => c.FechaCierre.Date == hoy)
-            .OrderByDescending(c => c.FechaHoraCierre)
-            .FirstOrDefaultAsync();
-
-        if (cierre == null)
+        var cierre = new CierreCaja
         {
-            cierre = new CierreCaja
-            {
-                FechaCierre = hoy,
-                FechaHoraCierre = DateTime.Now,
-                UsuarioId = usuarioId,
-                MontoInicial = montoInicial,
-                Estado = "Abierto",
-                TotalEfectivo = 0,
-                TotalTarjeta = 0,
-                TotalTransferencia = 0,
-                TotalCordobas = 0,
-                TotalDolares = 0,
-                TotalGeneral = 0,
-                TotalOrdenes = 0,
-                TotalPagos = 0,
-                MontoEsperado = montoInicial
-            };
-            _context.CierresCaja.Add(cierre);
-        }
-        else
-        {
-            cierre.Estado = "Abierto";
-            cierre.MontoInicial = montoInicial;
-            cierre.UsuarioId = usuarioId;
-            cierre.FechaHoraCierre = DateTime.Now;
-            cierre.TotalEfectivo = 0;
-            cierre.TotalTarjeta = 0;
-            cierre.TotalTransferencia = 0;
-            cierre.TotalCordobas = 0;
-            cierre.TotalDolares = 0;
-            cierre.TotalGeneral = 0;
-            cierre.TotalOrdenes = 0;
-            cierre.TotalPagos = 0;
-            cierre.MontoEsperado = montoInicial;
-            cierre.MontoReal = null;
-            cierre.Diferencia = null;
-            cierre.Observaciones = null;
-        }
+            FechaCierre = hoy,
+            FechaHoraCierre = DateTime.Now,
+            UsuarioId = usuarioId,
+            MontoInicial = montoInicial,
+            Estado = "Abierto",
+            TotalEfectivo = 0,
+            TotalTarjeta = 0,
+            TotalTransferencia = 0,
+            TotalCordobas = 0,
+            TotalDolares = 0,
+            TotalGeneral = 0,
+            TotalOrdenes = 0,
+            TotalPagos = 0,
+            MontoEsperado = montoInicial
+        };
 
+        _context.CierresCaja.Add(cierre);
         await _context.SaveChangesAsync();
         return cierre;
     }
@@ -144,14 +117,8 @@ public class CajaService : ICajaService
         var totalEfectivo = Math.Round(CajaArqueoHelper.TotalEfectivoNetoArqueo(pagos, tipoCambio), 2, MidpointRounding.AwayFromZero);
         var totalTarjeta = pagos.Where(p => p.TipoPago == "Tarjeta").Sum(p => p.Monto);
         var totalTransferencia = pagos.Where(p => p.TipoPago == "Transferencia").Sum(p => p.Monto);
-        var totalCordobas = pagos.Sum(p =>
-            (p.MontoCordobasFisico ?? 0) +
-            (p.MontoCordobasElectronico ?? 0) +
-            (p.Moneda == SD.MonedaCordoba ? p.Monto : 0));
-        var totalDolares = pagos.Sum(p =>
-            (p.MontoDolaresFisico ?? 0) +
-            (p.MontoDolaresElectronico ?? 0) +
-            (p.Moneda == SD.MonedaDolar ? p.Monto : 0));
+        var totalCordobas = pagos.Where(p => p.Moneda == SD.MonedaCordoba).Sum(p => p.Monto);
+        var totalDolares = pagos.Where(p => p.Moneda == SD.MonedaDolar).Sum(p => p.Monto);
 
         var totalGeneral = Math.Round(pagos.Sum(p => p.Monto), 2, MidpointRounding.AwayFromZero);
         var montoInicial = cierre.MontoInicial ?? 0;

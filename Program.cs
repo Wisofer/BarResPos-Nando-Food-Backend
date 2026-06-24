@@ -39,7 +39,7 @@ if (!Directory.Exists(appDataFolder))
     Directory.CreateDirectory(appDataFolder);
 }
 string persistentDbPath = Path.Combine(appDataFolder, "barrestpos.db");
-string connectionString = $"Data Source={persistentDbPath};Cache=Shared;Mode=ReadWriteCreate;";
+string connectionString = $"Data Source={persistentDbPath};Cache=Shared;Mode=ReadWriteCreate;Default Timeout=10;";
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
@@ -65,7 +65,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendCors", policy =>
     {
-        policy.WithOrigins(corsOrigins)
+        policy.SetIsOriginAllowed(origin => true)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -120,7 +120,7 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("FacturasPagos", policy => policy.RequireClaim("Rol", "Normal", "Administrador"));
     options.AddPolicy("Pagos", policy => policy.RequireClaim("Rol", "Caja", "Normal", "Administrador"));
     options.AddPolicy("Inventario", policy => policy.RequireClaim("Rol", "Normal", "Administrador"));
-    options.AddPolicy("Cocina", policy => policy.RequireClaim("Rol", "Cocinero", "Administrador"));
+    options.AddPolicy("Cocina", policy => policy.RequireClaim("Rol", "Cocinero", "Normal", "Administrador"));
     options.AddPolicy("Cajero", policy => policy.RequireClaim("Rol", "Cajero", "Caja", "Administrador"));
 });
 
@@ -176,10 +176,10 @@ using (var scope = app.Services.CreateScope())
             try
             {
                 // Asegurar la existencia e inyección de migraciones automáticas en la base de datos local SQLite de AppData
-                logger.LogInformation("Aplicando migraciones automáticas en SQLite local en AppData...");
                 dbContext.Database.Migrate();
                 dbContext.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
-                logger.LogInformation("Base de datos SQLite lista y actualizada en modo WAL.");
+                dbContext.Database.ExecuteSqlRaw("PRAGMA busy_timeout=10000;");
+                logger.LogInformation("Base de datos SQLite lista, actualizada en modo WAL y con timeout de 10s.");
 
                 // Realizar un respaldo automático rápido al iniciar el sistema
                 BarRestPOS.Utils.BackupHelper.CrearRespaldo("inicio");

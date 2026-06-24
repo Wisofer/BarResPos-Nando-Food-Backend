@@ -73,6 +73,21 @@ public class ImpresionService : IImpresionService
         return telefono;
     }
 
+    private string ObtenerRucRestaurante()
+    {
+        var ruc = _context.Configuraciones
+            .AsNoTracking()
+            .Where(c => c.Clave == "Tickets:RucRestaurante")
+            .Select(c => c.Valor)
+            .FirstOrDefault()?.Trim();
+            
+        if (string.IsNullOrEmpty(ruc))
+        {
+            ruc = _configuration["Tickets:RucRestaurante"]?.Trim() ?? "";
+        }
+        return ruc;
+    }
+
     private string ObtenerLogoFisico()
     {
         var logoUrl = _context.Configuraciones
@@ -130,14 +145,20 @@ public class ImpresionService : IImpresionService
             esc.PrintLine($"TEL: {telefono}");
         }
 
+        var ruc = ObtenerRucRestaurante();
+        if (!string.IsNullOrEmpty(ruc))
+        {
+            esc.PrintLine($"RUC: {ruc}");
+        }
+
         return esc.DrawDivider()
            .AlignLeft()
            .BoldOn()
            .PrintLine($"{tipoTicket}: {numero}")
            .BoldOff()
+           .PrintLine($"FECHA:  {fecha:dd/MM/yyyy HH:mm}")
            .PrintLine($"MESA:   {orden.Mesa?.Numero ?? "S/M"}")
            .PrintLine($"MESERO: {orden.Mesero?.NombreCompleto ?? "N/A"}")
-           .PrintLine($"FECHA:  {fecha:dd/MM/yyyy HH:mm}")
            .DrawDivider();
     }
 
@@ -176,7 +197,7 @@ public class ImpresionService : IImpresionService
            .AlignLeft();
 
         string mesaStr;
-        if (orden.OrigenPedido == SD.OrigenPedidoDelivery)
+        if (string.Equals(orden.OrigenPedido, SD.OrigenPedidoDelivery, StringComparison.OrdinalIgnoreCase))
         {
             mesaStr = "ORIGEN: DELIVERY";
         }
@@ -186,21 +207,42 @@ public class ImpresionService : IImpresionService
         }
         else
         {
-            var ubicacionNombre = orden.Mesa?.Ubicacion?.Nombre?.ToUpper() ?? "";
-            mesaStr = $"MESA: {orden.Mesa?.Numero ?? "S/M"}";
-            if (!string.IsNullOrEmpty(ubicacionNombre))
+            var ubicacionNombre = orden.Mesa?.Ubicacion?.Nombre?.ToUpper();
+            if (!string.IsNullOrWhiteSpace(ubicacionNombre))
             {
-                mesaStr += $" [{ubicacionNombre}]";
+                mesaStr = $"ORIGEN: {ubicacionNombre} {orden.Mesa?.Numero ?? "S/M"}";
+            }
+            else
+            {
+                mesaStr = $"ORIGEN: MESA {orden.Mesa?.Numero ?? "S/M"}";
             }
         }
         
+        var fechaStr = $"FECHA: {fecha:dd/MM/yyyy HH:mm}";
         var ordenStr = $"ORDEN: #{numero}";
-
-        var horaStr = $"HORA: {fecha:HH:mm (dd/MM)}";
         var meseroStr = $"MESERO: {orden.Mesero?.NombreCompleto ?? "N/A"}";
 
-        esc.PrintColumns(mesaStr, ordenStr);
-        esc.PrintColumns(horaStr, meseroStr);
+        esc.PrintColumns(fechaStr, ordenStr);
+        esc.PrintLine(mesaStr);
+        esc.PrintLine(meseroStr);
+
+        if (string.Equals(orden.OrigenPedido, SD.OrigenPedidoDelivery, StringComparison.OrdinalIgnoreCase))
+        {
+            var nombre = string.IsNullOrWhiteSpace(orden.DeliveryClienteNombre) ? "Sin Nombre" : orden.DeliveryClienteNombre;
+            esc.BoldOn()
+               .PrintLine($"CLIENTE: {nombre}")
+               .BoldOff();
+            
+            if (!string.IsNullOrWhiteSpace(orden.DeliveryClienteTelefono))
+            {
+                esc.PrintLine($"TEL:     {orden.DeliveryClienteTelefono}");
+            }
+            if (!string.IsNullOrWhiteSpace(orden.DeliveryClienteDireccion))
+            {
+                esc.PrintLine($"DIR:     {orden.DeliveryClienteDireccion}");
+            }
+        }
+
         esc.PrintLine("================================================");
 
         return esc;
@@ -427,26 +469,37 @@ public class ImpresionService : IImpresionService
         if (!string.IsNullOrEmpty(telefono))
             esc.PrintLine($"TEL: {telefono}");
 
-        return esc.DrawDivider()
-           .AlignCenter()
-           .BoldOn()
-           .PrintLine("** DELIVERY **")
-           .NormalFont()
-           .BoldOff()
-           .AlignLeft()
-           .PrintLine($"ORDEN:   #{numero}")
-           .BoldOn()
-           .PrintLine($"CLIENTE: {orden.DeliveryClienteNombre ?? "N/A"}")
-           .BoldOff()
-           .PrintLine($"TEL:     {orden.DeliveryClienteTelefono ?? "N/A"}")
-           .PrintLine($"DIR:     {orden.DeliveryClienteDireccion ?? "N/A"}")
-           .PrintLine($"FECHA:   {fecha:dd/MM/yyyy HH:mm}")
-           .DrawDivider();
+        var ruc = ObtenerRucRestaurante();
+        if (!string.IsNullOrEmpty(ruc))
+            esc.PrintLine($"RUC: {ruc}");
+
+          esc.DrawDivider()
+             .AlignCenter()
+             .BoldOn()
+             .PrintLine("** DELIVERY **")
+             .NormalFont()
+             .BoldOff()
+             .AlignLeft()
+             .PrintLine($"ORDEN:   #{numero}")
+             .PrintLine($"FECHA:   {fecha:dd/MM/yyyy HH:mm}")
+             .BoldOn()
+             .PrintLine($"CLIENTE: {(string.IsNullOrWhiteSpace(orden.DeliveryClienteNombre) ? "Sin Nombre" : orden.DeliveryClienteNombre)}")
+             .BoldOff();
+
+          if (!string.IsNullOrWhiteSpace(orden.DeliveryClienteTelefono))
+              esc.PrintLine($"TEL:     {orden.DeliveryClienteTelefono}");
+              
+          if (!string.IsNullOrWhiteSpace(orden.DeliveryClienteDireccion))
+              esc.PrintLine($"DIR:     {orden.DeliveryClienteDireccion}");
+
+          esc.DrawDivider();
+          
+          return esc;
     }
 
     private EscPosBuilder BuildRecibo(Pago pago, Factura orden)
     {
-        var esDelivery = orden.OrigenPedido == SD.OrigenPedidoDelivery;
+        var esDelivery = string.Equals(orden.OrigenPedido, SD.OrigenPedidoDelivery, StringComparison.OrdinalIgnoreCase);
         var esc = esDelivery
             ? ConstruirCabeceraDelivery(orden.Numero, orden, pago.FechaPago)
             : ConstruirCabecera("RECIBO", orden.Numero, orden, pago.FechaPago);
@@ -505,7 +558,7 @@ public class ImpresionService : IImpresionService
 
     private EscPosBuilder BuildComanda(Factura orden)
     {
-        var esDelivery = orden.OrigenPedido == SD.OrigenPedidoDelivery;
+        var esDelivery = string.Equals(orden.OrigenPedido, SD.OrigenPedidoDelivery, StringComparison.OrdinalIgnoreCase);
         var esc = esDelivery
             ? ConstruirCabeceraDelivery(orden.Numero, orden, orden.FechaCreacion)
             : ConstruirCabecera("COMANDA", orden.Numero, orden, orden.FechaCreacion);
@@ -586,6 +639,12 @@ public class ImpresionService : IImpresionService
             esc.PrintLine($"TEL: {telefono}");
         }
 
+        var ruc = ObtenerRucRestaurante();
+        if (!string.IsNullOrEmpty(ruc))
+        {
+            esc.PrintLine($"RUC: {ruc}");
+        }
+
         esc.DrawDivider()
            .AlignCenter()
            .BoldOn()
@@ -593,7 +652,6 @@ public class ImpresionService : IImpresionService
            .BoldOff()
            .DrawDivider()
            .AlignLeft()
-           .PrintLine($"FECHA: {cierre.FechaHoraCierre:dd/MM/yyyy HH:mm}")
            .PrintLine($"CAJERO: {cierre.Usuario?.NombreCompleto ?? "N/A"}")
            .DrawDivider()
            .PrintColumns("FONDO INICIAL:", $"C$ {cierre.MontoInicial ?? 0:N2}")
@@ -630,5 +688,96 @@ public class ImpresionService : IImpresionService
     public string GenerarPreviewCorte(CierreCaja cierre)
     {
         return BuildTicketCorte(cierre).GetPlainText();
+    }
+
+    public byte[] GenerarTicketCancelacionItem(Factura orden, FacturaServicio itemCancelado)
+    {
+        var esc = new EscPosBuilder();
+        
+        bool esCocina = CocinaCatalogoHelper.FacturaServicioRequiereCocina(itemCancelado);
+        string titulo = esCocina ? "CANCELACION DE COCINA" : "CANCELACION DE BAR";
+
+        esc.AlignCenter()
+           .BoldOn()
+           .PrintLine("================================================")
+           .PrintLine($"** {titulo} **")
+           .PrintLine("================================================")
+           .NormalFont()
+           .BoldOff()
+           .AlignLeft();
+
+        string mesaStr;
+        if (string.Equals(orden.OrigenPedido, SD.OrigenPedidoDelivery, StringComparison.OrdinalIgnoreCase))
+        {
+            mesaStr = "ORIGEN: DELIVERY";
+        }
+        else if (!string.IsNullOrEmpty(orden.OrigenPedido) && orden.OrigenPedido.Trim().ToLower() != "salon")
+        {
+            mesaStr = $"ORIGEN: {orden.OrigenPedido.ToUpper()}";
+        }
+        else
+        {
+            var ubicacionNombre = orden.Mesa?.Ubicacion?.Nombre?.ToUpper();
+            if (!string.IsNullOrWhiteSpace(ubicacionNombre))
+            {
+                mesaStr = $"ORIGEN: {ubicacionNombre} {orden.Mesa?.Numero ?? "S/M"}";
+            }
+            else
+            {
+                mesaStr = $"ORIGEN: MESA {orden.Mesa?.Numero ?? "S/M"}";
+            }
+        }
+        
+        var ahora = DateTime.Now;
+        var fechaStr = $"FECHA: {ahora:dd/MM/yyyy HH:mm}";
+        var ordenStr = $"ORDEN: #{orden.Numero}";
+        var meseroStr = $"MESERO: {orden.Mesero?.NombreCompleto ?? "N/A"}";
+
+        esc.PrintColumns(fechaStr, ordenStr);
+        esc.PrintLine(mesaStr);
+        esc.PrintLine(meseroStr);
+
+        if (string.Equals(orden.OrigenPedido, SD.OrigenPedidoDelivery, StringComparison.OrdinalIgnoreCase))
+        {
+            var nombre = string.IsNullOrWhiteSpace(orden.DeliveryClienteNombre) ? "Sin Nombre" : orden.DeliveryClienteNombre;
+            esc.BoldOn()
+               .PrintLine($"CLIENTE: {nombre}")
+               .BoldOff();
+            
+            if (!string.IsNullOrWhiteSpace(orden.DeliveryClienteTelefono))
+            {
+                esc.PrintLine($"TEL:     {orden.DeliveryClienteTelefono}");
+            }
+            if (!string.IsNullOrWhiteSpace(orden.DeliveryClienteDireccion))
+            {
+                esc.PrintLine($"DIR:     {orden.DeliveryClienteDireccion}");
+            }
+        }
+
+        esc.PrintLine("================================================");
+        esc.PrintLine("+----------------------------------------------+");
+        
+        var prodNombre = (itemCancelado.Servicio?.Nombre ?? "Producto").ToUpper();
+        
+        esc.BoldOn();
+        PrintCardLine(esc, $"❌ [ {itemCancelado.Cantidad} ]  {prodNombre}", "");
+        PrintCardLine(esc, "      PRODUCTO CANCELADO", "      ");
+        esc.BoldOff();
+
+        var opciones = StringFragmentOpcionesLinea(itemCancelado);
+        if (!string.IsNullOrEmpty(opciones))
+        {
+            PrintCardLine(esc, $"--> {opciones}", "       ");
+        }
+
+        if (!string.IsNullOrEmpty(itemCancelado.Notas))
+        {
+            PrintCardLine(esc, $"(¡) NOTA: {itemCancelado.Notas}", "       ");
+        }
+
+        esc.PrintLine("+----------------------------------------------+");
+        
+        ConstruirPiePagina(esc, "¡Aviso de cancelación!");
+        return esc.GetBytes();
     }
 }

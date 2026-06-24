@@ -12,6 +12,7 @@ public class ProductoOpcionItem
     public int Orden { get; set; }
     public decimal PrecioAdicional { get; set; }
     public bool Activo { get; set; } = true;
+    public string? ImagenUrl { get; set; }
 
     public virtual ProductoOpcionGrupo Grupo { get; set; } = null!;
 }

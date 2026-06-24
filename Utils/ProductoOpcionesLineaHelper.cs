@@ -137,7 +137,8 @@ public static class ProductoOpcionesLineaHelper
                     nombre = o.Nombre,
                     precioAdicional = o.PrecioAdicional,
                     orden = o.Orden,
-                    activo = o.Activo
+                    activo = o.Activo,
+                    imagenUrl = o.ImagenUrl
                 }).ToArray()
             })
             .ToArray();

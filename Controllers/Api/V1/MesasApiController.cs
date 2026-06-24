@@ -134,7 +134,7 @@ public class MesasApiController : BaseApiController
             {
                 i.Id,
                 i.ServicioId,
-                Servicio = i.Servicio.Nombre,
+                Servicio = i.Servicio != null ? i.Servicio.Nombre : "Producto eliminado",
                 i.Cantidad,
                 i.PrecioUnitario,
                 i.Monto,
@@ -172,7 +172,7 @@ public class MesasApiController : BaseApiController
             {
                 fs.Id,
                 fs.ServicioId,
-                fs.Servicio.Nombre,
+                Nombre = fs.Servicio != null ? fs.Servicio.Nombre : "Producto eliminado",
                 fs.Cantidad,
                 fs.Monto,
                 fs.Estado,

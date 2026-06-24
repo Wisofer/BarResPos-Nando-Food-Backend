@@ -45,7 +45,8 @@ public class ProductoOpcionesApiController : BaseApiController
                     o.Nombre,
                     o.Orden,
                     o.PrecioAdicional,
-                    o.Activo
+                    o.Activo,
+                    o.ImagenUrl
                 })
             })
             .ToList();
@@ -162,6 +163,53 @@ public class ProductoOpcionesApiController : BaseApiController
         _context.ProductoOpcionItems.Remove(o);
         _context.SaveChanges();
         return OkResponse<object?>(null, "Opción eliminada");
+    }
+
+    [HttpPost("grupos/{grupoId:int}/items/{opcionId:int}/imagen")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> SubirImagenOpcion(int productoId, int grupoId, int opcionId, [FromForm] IFormFile archivo)
+    {
+        var o = _context.ProductoOpcionItems
+            .Include(x => x.Grupo)
+            .FirstOrDefault(x => x.Id == opcionId && x.GrupoId == grupoId && x.Grupo.ServicioId == productoId);
+        if (o == null) return FailResponse("Opción no encontrada.", StatusCodes.Status404NotFound);
+
+        if (archivo == null || archivo.Length <= 0)
+            return FailResponse("Debe adjuntar una imagen válida.");
+        if (archivo.Length > 5 * 1024 * 1024)
+            return FailResponse("La imagen no debe superar 5MB.");
+
+        var tiposPermitidos = new[] { "image/jpeg", "image/png", "image/webp" };
+        if (!tiposPermitidos.Contains((archivo.ContentType ?? string.Empty).ToLowerInvariant()))
+            return FailResponse("Formato no permitido. Use JPG, PNG o WEBP.");
+
+        var appDataPath = System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData), "BarRestPOS");
+        var uploadsFolder = System.IO.Path.Combine(appDataPath, "uploads", "productos", "opciones");
+        if (!System.IO.Directory.Exists(uploadsFolder))
+        {
+            System.IO.Directory.CreateDirectory(uploadsFolder);
+        }
+
+        var extension = System.IO.Path.GetExtension(archivo.FileName);
+        if (string.IsNullOrEmpty(extension)) extension = ".jpg";
+        var fileName = $"opcion_{o.Id}_{System.Guid.NewGuid()}{extension}";
+        var filePath = System.IO.Path.Combine(uploadsFolder, fileName);
+
+        await using (var fileStream = new System.IO.FileStream(filePath, System.IO.FileMode.Create))
+        {
+            await archivo.CopyToAsync(fileStream);
+        }
+
+        var imageUrl = $"/uploads/productos/opciones/{fileName}";
+        o.ImagenUrl = imageUrl;
+        _context.SaveChanges();
+
+        return OkResponse(new
+        {
+            o.Id,
+            o.Nombre,
+            o.ImagenUrl
+        }, "Imagen subida correctamente.");
     }
 
     private bool ExisteProducto(int id) => _context.Servicios.Any(s => s.Id == id);

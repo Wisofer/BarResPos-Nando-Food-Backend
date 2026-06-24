@@ -1,4 +1,5 @@
 using BarRestPOS.Data;
+using BarRestPOS.Models.Api;
 using BarRestPOS.Services.IServices;
 using BarRestPOS.Utils;
 using Microsoft.AspNetCore.Authorization;
@@ -361,6 +362,154 @@ public class ImpresionApiController : ControllerBase
         {
             _logger.LogError(ex, "Error al generar preview de bar");
             return BadRequest(new { mensaje = "Error interno al generar previsualización" });
+        }
+    }
+
+    [HttpPost("cancelacion-linea/{facturaId:int}/{lineaId:int}")]
+    public IActionResult CancelarLinea(
+        int facturaId,
+        int lineaId,
+        [FromBody] CancelarPedidoRequest? request,
+        [FromServices] IConfiguracionService configuracionService,
+        [FromServices] IInventarioService inventarioService)
+    {
+        try
+        {
+            var pin = configuracionService.ObtenerValor(SD.ConfigClavePinCancelacionPedidos)?.Trim();
+            if (string.IsNullOrEmpty(pin))
+                return BadRequest(new { mensaje = "Configure el PIN de cancelación en Configuraciones (PinCancelacionPedidos)." });
+
+            var codigo = request?.Codigo?.Trim();
+            if (string.IsNullOrEmpty(codigo))
+                return BadRequest(new { mensaje = "El código de verificación es requerido." });
+
+            if (!string.Equals(codigo, pin, StringComparison.Ordinal))
+                return StatusCode(StatusCodes.Status403Forbidden, new { mensaje = "Código de verificación inválido." });
+
+            var orden = _context.Facturas
+                .AsSplitQuery()
+                .Include(f => f.Mesa)
+                    .ThenInclude(m => m.Ubicacion)
+                .Include(f => f.Mesero)
+                .Include(f => f.FacturaServicios)
+                    .ThenInclude(fs => fs.Servicio)
+                    .ThenInclude(s => s.CategoriaProducto)
+                .Include(f => f.FacturaServicios)
+                    .ThenInclude(fs => fs.OpcionesSeleccionadas)
+                .FirstOrDefault(f => f.Id == facturaId);
+
+            if (orden == null)
+                return NotFound(new { mensaje = "Orden no encontrada." });
+
+            if (orden.Estado == SD.EstadoOrdenPagado || orden.Estado == SD.EstadoOrdenCancelado)
+                return BadRequest(new { mensaje = "No se puede editar un pedido pagado o cancelado." });
+
+            var linea = orden.FacturaServicios.FirstOrDefault(fs => fs.Id == lineaId);
+            if (linea == null)
+                return NotFound(new { mensaje = "Producto no encontrado en esta orden." });
+
+            var userId = SecurityHelper.GetUserId(User);
+            if (!userId.HasValue)
+                return Unauthorized(new { mensaje = "Usuario no autenticado." });
+
+            bool esCocina = CocinaCatalogoHelper.FacturaServicioRequiereCocina(linea);
+            string printerName = esCocina
+                ? ObtenerNombreImpresora("Tickets:ImpresoraCocina", "Cocina")
+                : ObtenerNombreImpresora("Tickets:ImpresoraBar", "Bar");
+
+            var bytes = _impresionService.GenerarTicketCancelacionItem(orden, linea);
+            bool printOk = RawPrinterHelper.SendBytesToPrinter(printerName, bytes, $"Cancelacion-{orden.Numero}-{linea.Id}");
+            if (!printOk)
+            {
+                _logger.LogWarning("No se pudo imprimir el ticket de cancelación en la impresora: {PrinterName}", printerName);
+            }
+
+            var mesaIdAlInicio = orden.MesaId;
+
+            using var tx = _context.Database.BeginTransaction();
+            try
+            {
+                var svc = _context.Servicios.FirstOrDefault(s => s.Id == linea.ServicioId);
+                if (svc != null && svc.ControlarStock && linea.Cantidad > 0)
+                {
+                    var refPedido = string.IsNullOrWhiteSpace(orden.Numero) ? $"#{orden.Id}" : orden.Numero;
+                    inventarioService.RegistrarEntrada(
+                        linea.ServicioId,
+                        linea.Cantidad,
+                        null,
+                        null,
+                        null,
+                        $"Devolución por cancelar producto — pedido {refPedido}",
+                        userId.Value);
+                }
+
+                if (linea.OpcionesSeleccionadas?.Count > 0)
+                    _context.FacturaServicioOpcionesSeleccion.RemoveRange(linea.OpcionesSeleccionadas);
+
+                _context.FacturaServicios.Remove(linea);
+                orden.FacturaServicios.Remove(linea);
+
+                bool vacio = false;
+                if (orden.FacturaServicios.Count == 0)
+                {
+                    orden.Monto = 0;
+                    orden.Estado = SD.EstadoOrdenGuardado;
+                    orden.EstadoCocina = SD.EstadoCocinaPendiente;
+                    orden.MesaId = null;
+                    orden.FechaActualizacion = DateTime.Now;
+                    vacio = true;
+                }
+                else
+                {
+                    orden.Monto = Math.Round(
+                        orden.FacturaServicios.Sum(fs => fs.Monto),
+                        2,
+                        MidpointRounding.AwayFromZero);
+                    orden.ServicioId = orden.FacturaServicios.First().ServicioId;
+                    orden.FechaActualizacion = DateTime.Now;
+                }
+
+                if (vacio && mesaIdAlInicio.HasValue)
+                {
+                    var mesa = _context.Mesas.FirstOrDefault(m => m.Id == mesaIdAlInicio.Value);
+                    if (mesa != null)
+                    {
+                        var otrosEnOrigen = _context.Facturas.Count(f =>
+                            f.MesaId == mesaIdAlInicio.Value
+                            && f.Id != orden.Id
+                            && f.Estado != SD.EstadoOrdenPagado
+                            && f.Estado != SD.EstadoOrdenCancelado);
+                        if (otrosEnOrigen == 0)
+                        {
+                            mesa.Estado = SD.EstadoMesaLibre;
+                        }
+                    }
+                }
+
+                _context.SaveChanges();
+                tx.Commit();
+
+                return Ok(new
+                {
+                    id = orden.Id,
+                    monto = orden.Monto,
+                    estado = orden.Estado,
+                    mesaId = orden.MesaId,
+                    vacio = vacio,
+                    mensaje = "Producto cancelado y aviso impreso correctamente."
+                });
+            }
+            catch (Exception ex)
+            {
+                tx.Rollback();
+                _logger.LogError(ex, "Error al eliminar producto {LineaId} de la orden {OrdenId}", lineaId, facturaId);
+                return BadRequest(new { mensaje = "Error al procesar la cancelación del producto." });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error general en la cancelación del producto");
+            return BadRequest(new { mensaje = "Error interno del servidor." });
         }
     }
 }

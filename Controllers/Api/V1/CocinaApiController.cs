@@ -26,10 +26,11 @@ public class CocinaApiController : BaseApiController
             .Include(f => f.Mesero)
             .Include(f => f.FacturaServicios).ThenInclude(i => i.Servicio).ThenInclude(s => s.CategoriaProducto)
             .Include(f => f.FacturaServicios).ThenInclude(i => i.OpcionesSeleccionadas)
-            .Where(f => f.Estado != SD.EstadoOrdenPagado 
-                     && f.Estado != SD.EstadoOrdenCancelado 
-                     && f.Estado != SD.EstadoOrdenPendiente 
-                     && f.Estado != SD.EstadoOrdenGuardado)
+            .Where(f => 
+                (f.Estado != SD.EstadoOrdenPagado && f.Estado != SD.EstadoOrdenCancelado && f.Estado != SD.EstadoOrdenPendiente && f.Estado != SD.EstadoOrdenGuardado)
+                || 
+                ((f.Estado == SD.EstadoOrdenPagado || f.Estado == SD.EstadoOrdenCancelado) && f.FechaCreacion >= DateTime.Now.AddHours(-24))
+            )
             .Where(f => f.FacturaServicios.Any(i =>
                 i.Servicio != null && (i.Servicio.CategoriaProducto == null || i.Servicio.CategoriaProducto.RequiereCocina)));
 

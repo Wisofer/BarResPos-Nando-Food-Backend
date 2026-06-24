@@ -136,6 +136,12 @@ public class OrdenLineasReemplazoService
 
                 if (matchedReq != null)
                 {
+                    if (fs.Estado != SD.EstadoCocinaPendiente && matchedReq.Cantidad < fs.Cantidad)
+                    {
+                        tx.Rollback();
+                        return $"Anti-Fraude: No puede disminuir la cantidad de un producto que ya no está pendiente (Estado: {fs.Estado}). Pida a un administrador que cancele la orden.";
+                    }
+
                     lineasConsumidas.Add(matchedReq);
                     fs.Cantidad = matchedReq.Cantidad;
                     fs.Monto = Math.Round(fs.PrecioUnitario * matchedReq.Cantidad, 2, MidpointRounding.AwayFromZero);
@@ -149,6 +155,11 @@ public class OrdenLineasReemplazoService
                 }
                 else
                 {
+                    if (fs.Estado != SD.EstadoCocinaPendiente)
+                    {
+                        tx.Rollback();
+                        return $"Anti-Fraude: No puede eliminar un producto que ya no está pendiente (Estado: {fs.Estado}). Pida a un administrador que cancele la orden.";
+                    }
                     lineasAEliminar.Add(fs);
                 }
             }
@@ -248,6 +259,9 @@ public class OrdenLineasReemplazoService
         var linea = pedido.FacturaServicios.FirstOrDefault(fs => fs.Id == lineaId);
         if (linea == null)
             return (false, "Línea no encontrada en el pedido.");
+
+        if (linea.Estado != SD.EstadoCocinaPendiente)
+            return (false, $"Anti-Fraude: No puede eliminar un producto que ya no está pendiente (Estado: {linea.Estado}). Pida a un administrador que cancele la orden.");
 
         var svc = db.Servicios.FirstOrDefault(s => s.Id == linea.ServicioId);
         if (svc != null && svc.ControlarStock && linea.Cantidad > 0)

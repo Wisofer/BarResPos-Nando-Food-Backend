@@ -157,7 +157,9 @@ public class ReporteService : IReporteService
                 && d.Factura.FechaPagado.Value <= fHasta)
             .Select(d => new
             {
-                Categoria = d.Servicio.CategoriaProducto != null ? d.Servicio.CategoriaProducto.Nombre : (d.Servicio.Categoria ?? "Sin categoría"),
+                Categoria = d.Servicio != null 
+                    ? (d.Servicio.CategoriaProducto != null ? d.Servicio.CategoriaProducto.Nombre : (d.Servicio.Categoria ?? "Sin categoría")) 
+                    : "Sin categoría",
                 d.Monto,
                 d.Cantidad
             })
@@ -186,10 +188,12 @@ public class ReporteService : IReporteService
                 && d.Factura.FechaPagado.Value <= fHasta)
             .Select(d => new
             {
-                Categoria = d.Servicio.CategoriaProducto != null ? d.Servicio.CategoriaProducto.Nombre : (d.Servicio.Categoria ?? "Sin categoría"),
+                Categoria = d.Servicio != null 
+                    ? (d.Servicio.CategoriaProducto != null ? d.Servicio.CategoriaProducto.Nombre : (d.Servicio.Categoria ?? "Sin categoría")) 
+                    : "Sin categoría",
                 ProductoId = d.ServicioId,
-                Codigo = d.Servicio.Codigo,
-                Nombre = d.Servicio.Nombre,
+                Codigo = d.Servicio != null ? d.Servicio.Codigo : "",
+                Nombre = d.Servicio != null ? d.Servicio.Nombre : "Producto eliminado",
                 d.Cantidad,
                 d.Monto
             })

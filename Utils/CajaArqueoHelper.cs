@@ -16,7 +16,10 @@ public static class CajaArqueoHelper
             if (p.TipoPago == "Efectivo")
                 return p.Monto;
             if (p.TipoPago == "Mixto")
-                return (p.MontoCordobasFisico ?? 0) + ((p.MontoDolaresFisico ?? 0) * (p.TipoCambio ?? tipoCambioDefecto));
+            {
+                var brutoCordobas = (p.MontoCordobasFisico ?? 0) + ((p.MontoDolaresFisico ?? 0) * (p.TipoCambio ?? tipoCambioDefecto));
+                return Math.Max(0m, brutoCordobas - (p.Vuelto ?? 0m));
+            }
             return 0m;
         });
     }

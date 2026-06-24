@@ -56,5 +56,10 @@ public interface IImpresionService
     /// Genera texto plano estructurado del ticket de cierre de caja para previsualización
     /// </summary>
     string GenerarPreviewCorte(CierreCaja cierre);
+
+    /// <summary>
+    /// Genera los bytes ESC/POS del ticket de cancelación de un producto específico
+    /// </summary>
+    byte[] GenerarTicketCancelacionItem(Factura orden, FacturaServicio itemCancelado);
 }
 

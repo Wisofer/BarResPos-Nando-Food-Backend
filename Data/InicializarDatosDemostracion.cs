@@ -154,7 +154,7 @@ public static class InicializarDatosDemostracion
                 {
                     var grupoSalsas = new ProductoOpcionGrupo
                     {
-                        Nombre = "Elige tu Salsa",
+                        Nombre = "Opciones especiales",
                         Obligatorio = true,
                         MinSeleccion = 1,
                         MaxSeleccion = 1,

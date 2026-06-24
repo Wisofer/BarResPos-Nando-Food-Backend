@@ -8,6 +8,13 @@ public class ApplicationDbContext : DbContext
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
     {
+        Database.GetDbConnection().StateChange += (sender, args) =>
+        {
+            if (args.CurrentState == System.Data.ConnectionState.Open)
+            {
+                Database.ExecuteSqlRaw("PRAGMA busy_timeout = 10000;");
+            }
+        };
     }
 
     // Entidades principales del POS
@@ -362,8 +369,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Observaciones).HasMaxLength(1000);
             entity.Property(e => e.Estado).IsRequired().HasMaxLength(50).HasDefaultValue("Cerrado");
             
-            // Índice único por fecha para evitar cierres duplicados
-            entity.HasIndex(e => e.FechaCierre).IsUnique();
+            // Índice por fecha para búsquedas de cierres
+            entity.HasIndex(e => e.FechaCierre);
             
             // Relación con Usuario
             entity.HasOne(e => e.Usuario)

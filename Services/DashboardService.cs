@@ -108,7 +108,7 @@ public class DashboardService : IDashboardService
                         i.Factura.FechaPagado.Value >= inicioRango &&
                         i.Factura.FechaPagado.Value <= finRango &&
                         (i.Factura.Categoria == "General" || i.Factura.MesaId.HasValue || i.Factura.OrigenPedido == SD.OrigenPedidoDelivery))
-            .GroupBy(i => new { i.ServicioId, i.Servicio.Nombre })
+            .GroupBy(i => new { i.ServicioId, Nombre = i.Servicio != null ? i.Servicio.Nombre : "Producto eliminado" })
             .Select(g => new
             {
                 ProductoId = g.Key.ServicioId,
@@ -131,7 +131,9 @@ public class DashboardService : IDashboardService
                          (fs.Factura.Categoria == "General" || fs.Factura.MesaId.HasValue || fs.Factura.OrigenPedido == SD.OrigenPedidoDelivery))
             .Select(g => new
             {
-                Categoria = g.Servicio.CategoriaProducto != null ? g.Servicio.CategoriaProducto.Nombre : (g.Servicio.Categoria ?? "Sin categoría"),
+                Categoria = g.Servicio != null 
+                    ? (g.Servicio.CategoriaProducto != null ? g.Servicio.CategoriaProducto.Nombre : (g.Servicio.Categoria ?? "Sin categoría")) 
+                    : "Sin categoría",
                 Monto = g.Monto,
                 Cantidad = g.Cantidad
             })
