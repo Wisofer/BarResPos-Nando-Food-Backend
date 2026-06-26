@@ -207,15 +207,8 @@ public class ImpresionService : IImpresionService
         }
         else
         {
-            var ubicacionNombre = orden.Mesa?.Ubicacion?.Nombre?.ToUpper();
-            if (!string.IsNullOrWhiteSpace(ubicacionNombre))
-            {
-                mesaStr = $"ORIGEN: {ubicacionNombre} {orden.Mesa?.Numero ?? "S/M"}";
-            }
-            else
-            {
-                mesaStr = $"ORIGEN: MESA {orden.Mesa?.Numero ?? "S/M"}";
-            }
+            // Pedidos de salón: solo mostrar el número de mesa, sin nombre de ubicación
+            mesaStr = $"MESA:   {orden.Mesa?.Numero ?? "S/M"}";
         }
         
         var fechaStr = $"FECHA: {fecha:dd/MM/yyyy HH:mm}";
@@ -301,8 +294,10 @@ public class ImpresionService : IImpresionService
 
         if (lineasFilter != null && lineasFilter.Count > 0)
         {
-            titulo = "ADICION DE COCINA";
             itemsParaImprimir = items.Where(i => lineasFilter.Contains(i.Id)).ToList();
+            // Si el filtro abarca TODOS los artículos de cocina → primer envío completo
+            bool esPrimerEnvio = items.All(i => lineasFilter.Contains(i.Id));
+            titulo = esPrimerEnvio ? "COMANDA DE COCINA" : "PEDIDO EXTRA - COCINA";
         }
         else
         {
@@ -311,7 +306,7 @@ public class ImpresionService : IImpresionService
 
             if (tieneEnPreparacion && tieneListosOEntregados)
             {
-                titulo = "ADICION DE COCINA";
+                titulo = "PEDIDO EXTRA - COCINA";
                 itemsParaImprimir = items.Where(i => i.Estado == "En Preparación" || i.Estado == "Pendiente").ToList();
             }
             else if (!tieneEnPreparacion)
@@ -376,8 +371,10 @@ public class ImpresionService : IImpresionService
 
         if (lineasFilter != null && lineasFilter.Count > 0)
         {
-            titulo = "ADICION DE BAR";
             itemsParaImprimir = items.Where(i => lineasFilter.Contains(i.Id)).ToList();
+            // Si el filtro abarca TODOS los artículos de bar → primer envío completo
+            bool esPrimerEnvio = items.All(i => lineasFilter.Contains(i.Id));
+            titulo = esPrimerEnvio ? "COMANDA DE BAR" : "PEDIDO EXTRA - BAR";
         }
         else
         {
@@ -386,7 +383,7 @@ public class ImpresionService : IImpresionService
 
             if (tieneEnPreparacion && tieneListosOEntregados)
             {
-                titulo = "ADICION DE BAR";
+                titulo = "PEDIDO EXTRA - BAR";
                 itemsParaImprimir = items.Where(i => i.Estado == "En Preparación" || i.Estado == "Pendiente").ToList();
             }
             else if (!tieneEnPreparacion)
