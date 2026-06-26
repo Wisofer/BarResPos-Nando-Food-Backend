@@ -208,7 +208,7 @@ public class ImpresionService : IImpresionService
         else
         {
             // Pedidos de salón: ORIGEN con número de mesa, sin nombre de ubicación
-            mesaStr = $"ORIGEN: Mesa {orden.Mesa?.Numero ?? "S/M"}";
+            mesaStr = $"ORIGEN: {orden.Mesa?.Numero ?? "S/M"}";
         }
         var ordenStr = $"ORDEN: #{numero}";
         var meseroStr = $"MESERO: {orden.Mesero?.NombreCompleto ?? "Sin registro"}";
@@ -719,7 +719,7 @@ public class ImpresionService : IImpresionService
         }
         else
         {
-            mesaStr = $"ORIGEN: Mesa {orden.Mesa?.Numero ?? "S/M"}";
+            mesaStr = $"ORIGEN: {orden.Mesa?.Numero ?? "S/M"}";
         }
         
         var ordenStr = $"ORDEN: #{orden.Numero}";
