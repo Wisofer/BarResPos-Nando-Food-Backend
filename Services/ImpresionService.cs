@@ -151,13 +151,16 @@ public class ImpresionService : IImpresionService
             esc.PrintLine($"RUC: {ruc}");
         }
 
+        var mesaNum = orden.Mesa?.Numero ?? "S/M";
+        var mesaStr = mesaNum == "S/M" || mesaNum.StartsWith("Mesa", StringComparison.OrdinalIgnoreCase) ? mesaNum : $"Mesa {mesaNum}";
+
         return esc.DrawDivider()
            .AlignLeft()
            .BoldOn()
            .PrintLine($"{tipoTicket}: {numero}")
            .BoldOff()
            .PrintLine($"FECHA:  {fecha:dd/MM/yyyy HH:mm}")
-           .PrintLine($"MESA:   {orden.Mesa?.Numero ?? "S/M"}")
+           .PrintLine($"ORIGEN: {mesaStr}")
            .PrintLine($"MESERO: {orden.Mesero?.NombreCompleto ?? "Sin registro"}")
            .DrawDivider();
     }
@@ -207,8 +210,10 @@ public class ImpresionService : IImpresionService
         }
         else
         {
+            var mesaNum = orden.Mesa?.Numero ?? "S/M";
+            var mStr = mesaNum == "S/M" || mesaNum.StartsWith("Mesa", StringComparison.OrdinalIgnoreCase) ? mesaNum : $"Mesa {mesaNum}";
             // Pedidos de salón: ORIGEN con número de mesa, sin nombre de ubicación
-            mesaStr = $"ORIGEN: {orden.Mesa?.Numero ?? "S/M"}";
+            mesaStr = $"ORIGEN: {mStr}";
         }
         var ordenStr = $"ORDEN: #{numero}";
         var meseroStr = $"MESERO: {orden.Mesero?.NombreCompleto ?? "Sin registro"}";
@@ -511,15 +516,25 @@ public class ImpresionService : IImpresionService
            .BoldOff()
            .DrawDivider();
 
-        foreach (var item in orden.FacturaServicios)
-        {
-            esc.BoldOn()
-               .Print3Columns(item.Cantidad.ToString(), item.Servicio?.Nombre ?? "Producto", $"C${item.Monto:N2}")
-               .BoldOff();
+        var lineasAgrupadas = orden.FacturaServicios
+            .GroupBy(item => new { 
+                item.ServicioId, 
+                NotasStr = (item.Notas ?? "").Trim(),
+                OpcionesStr = StringFragmentOpcionesLinea(item) 
+            })
+            .Select(g => new {
+                Cantidad = g.Sum(x => x.Cantidad),
+                Nombre = g.First().Servicio?.Nombre ?? "Producto",
+                Monto = g.Sum(x => x.Monto),
+                Opciones = g.Key.OpcionesStr
+            });
 
-            var opciones = StringFragmentOpcionesLinea(item);
-            if (!string.IsNullOrEmpty(opciones))
-                esc.PrintLine($"   · {opciones}");
+        foreach (var item in lineasAgrupadas)
+        {
+            esc.Print3Columns(item.Cantidad.ToString(), item.Nombre, $"C${item.Monto:N2}");
+
+            if (!string.IsNullOrEmpty(item.Opciones))
+                esc.PrintLine($"   · {item.Opciones}");
         }
 
         esc.DrawDivider()
@@ -570,15 +585,26 @@ public class ImpresionService : IImpresionService
            .BoldOff()
            .DrawDivider();
 
-        foreach (var item in orden.FacturaServicios)
-        {
-            esc.BoldOn()
-               .Print3Columns(item.Cantidad.ToString(), item.Servicio?.Nombre ?? "Producto", $"C${item.Monto:N2}")
-               .BoldOff();
+        var lineasAgrupadas = orden.FacturaServicios
+            .GroupBy(item => new { 
+                item.ServicioId, 
+                NotasStr = (item.Notas ?? "").Trim(),
+                OpcionesStr = StringFragmentOpcionesLinea(item) 
+            })
+            .Select(g => new {
+                Cantidad = g.Sum(x => x.Cantidad),
+                Nombre = g.First().Servicio?.Nombre ?? "Producto",
+                Monto = g.Sum(x => x.Monto),
+                Opciones = g.Key.OpcionesStr,
+                Notas = g.Key.NotasStr
+            });
 
-            var opciones = StringFragmentOpcionesLinea(item);
-            if (!string.IsNullOrEmpty(opciones))
-                esc.PrintLine($"   · {opciones}");
+        foreach (var item in lineasAgrupadas)
+        {
+            esc.Print3Columns(item.Cantidad.ToString(), item.Nombre, $"C${item.Monto:N2}");
+
+            if (!string.IsNullOrEmpty(item.Opciones))
+                esc.PrintLine($"   · {item.Opciones}");
             if (!string.IsNullOrEmpty(item.Notas))
                 esc.PrintLine($"   [!] {item.Notas}");
         }

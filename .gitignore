@@ -1,0 +1,24 @@
+# .NET Core
+bin/
+obj/
+
+# Publish output
+publish_windows/
+publish/
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# AppSettings (Optional, but usually ignored if it contains secrets. Assuming you keep it for now, so commented out)
+# appsettings.json
+# appsettings.Development.json
+
+# IDE
+.vs/
+.vscode/
+*.user
+
+# OSX
+.DS_Store
