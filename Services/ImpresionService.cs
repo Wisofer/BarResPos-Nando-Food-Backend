@@ -199,16 +199,16 @@ public class ImpresionService : IImpresionService
         string mesaStr;
         if (string.Equals(orden.OrigenPedido, SD.OrigenPedidoDelivery, StringComparison.OrdinalIgnoreCase))
         {
-            mesaStr = "ORIGEN: DELIVERY";
+            mesaStr = "ORIGEN: Delivery";
         }
         else if (!string.IsNullOrEmpty(orden.OrigenPedido) && orden.OrigenPedido.Trim().ToLower() != "salon")
         {
-            mesaStr = $"ORIGEN: {orden.OrigenPedido.ToUpper()}";
+            mesaStr = $"ORIGEN: {orden.OrigenPedido}";
         }
         else
         {
-            // Pedidos de salón: solo mostrar el número de mesa, sin nombre de ubicación
-            mesaStr = $"MESA:   {orden.Mesa?.Numero ?? "S/M"}";
+            // Pedidos de salón: ORIGEN con número de mesa, sin nombre de ubicación
+            mesaStr = $"ORIGEN: Mesa {orden.Mesa?.Numero ?? "S/M"}";
         }
         
         var fechaStr = $"FECHA: {fecha:dd/MM/yyyy HH:mm}";
