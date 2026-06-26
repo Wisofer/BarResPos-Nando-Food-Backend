@@ -115,12 +115,12 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("Administrador", policy => policy.RequireClaim("Rol", "Administrador"));
-    options.AddPolicy("Normal", policy => policy.RequireClaim("Rol", "Normal", "Administrador"));
+    options.AddPolicy("Normal", policy => policy.RequireClaim("Rol", "Normal", "Mesero", "Administrador"));
     options.AddPolicy("Caja", policy => policy.RequireClaim("Rol", "Caja", "Administrador"));
-    options.AddPolicy("FacturasPagos", policy => policy.RequireClaim("Rol", "Normal", "Administrador"));
-    options.AddPolicy("Pagos", policy => policy.RequireClaim("Rol", "Caja", "Normal", "Administrador"));
+    options.AddPolicy("FacturasPagos", policy => policy.RequireClaim("Rol", "Normal", "Mesero", "Administrador"));
+    options.AddPolicy("Pagos", policy => policy.RequireClaim("Rol", "Caja", "Normal", "Mesero", "Administrador"));
     options.AddPolicy("Inventario", policy => policy.RequireClaim("Rol", "Normal", "Administrador"));
-    options.AddPolicy("Cocina", policy => policy.RequireClaim("Rol", "Cocinero", "Normal", "Administrador"));
+    options.AddPolicy("Cocina", policy => policy.RequireClaim("Rol", "Cocinero", "Normal", "Mesero", "Administrador"));
     options.AddPolicy("Cajero", policy => policy.RequireClaim("Rol", "Cajero", "Caja", "Administrador"));
 });
 

@@ -158,7 +158,7 @@ public class ImpresionService : IImpresionService
            .BoldOff()
            .PrintLine($"FECHA:  {fecha:dd/MM/yyyy HH:mm}")
            .PrintLine($"MESA:   {orden.Mesa?.Numero ?? "S/M"}")
-           .PrintLine($"MESERO: {orden.Mesero?.NombreCompleto ?? "N/A"}")
+           .PrintLine($"MESERO: {orden.Mesero?.NombreCompleto ?? "Sin registro"}")
            .DrawDivider();
     }
 
@@ -210,22 +210,22 @@ public class ImpresionService : IImpresionService
             // Pedidos de salón: ORIGEN con número de mesa, sin nombre de ubicación
             mesaStr = $"ORIGEN: Mesa {orden.Mesa?.Numero ?? "S/M"}";
         }
-        
-        var fechaStr = $"FECHA: {fecha:dd/MM/yyyy HH:mm}";
         var ordenStr = $"ORDEN: #{numero}";
-        var meseroStr = $"MESERO: {orden.Mesero?.NombreCompleto ?? "N/A"}";
+        var meseroStr = $"MESERO: {orden.Mesero?.NombreCompleto ?? "Sin registro"}";
 
-        esc.PrintColumns(fechaStr, ordenStr);
+        esc.PrintLine(ordenStr);
         esc.PrintLine(mesaStr);
         esc.PrintLine(meseroStr);
 
         if (string.Equals(orden.OrigenPedido, SD.OrigenPedidoDelivery, StringComparison.OrdinalIgnoreCase))
         {
-            var nombre = string.IsNullOrWhiteSpace(orden.DeliveryClienteNombre) ? "Sin Nombre" : orden.DeliveryClienteNombre;
-            esc.BoldOn()
-               .PrintLine($"CLIENTE: {nombre}")
-               .BoldOff();
-            
+            // Solo imprimir si tiene dato, igual que TEL y DIR
+            if (!string.IsNullOrWhiteSpace(orden.DeliveryClienteNombre))
+            {
+                esc.BoldOn()
+                   .PrintLine($"CLIENTE: {orden.DeliveryClienteNombre}")
+                   .BoldOff();
+            }
             if (!string.IsNullOrWhiteSpace(orden.DeliveryClienteTelefono))
             {
                 esc.PrintLine($"TEL:     {orden.DeliveryClienteTelefono}");
@@ -479,9 +479,14 @@ public class ImpresionService : IImpresionService
              .AlignLeft()
              .PrintLine($"ORDEN:   #{numero}")
              .PrintLine($"FECHA:   {fecha:dd/MM/yyyy HH:mm}")
-             .BoldOn()
-             .PrintLine($"CLIENTE: {(string.IsNullOrWhiteSpace(orden.DeliveryClienteNombre) ? "Sin Nombre" : orden.DeliveryClienteNombre)}")
-             .BoldOff();
+             .BoldOn();
+
+          // Solo imprimir si tiene nombre, igual que TEL y DIR
+          if (!string.IsNullOrWhiteSpace(orden.DeliveryClienteNombre))
+          {
+              esc.PrintLine($"CLIENTE: {orden.DeliveryClienteNombre}");
+          }
+          esc.BoldOff();
 
           if (!string.IsNullOrWhiteSpace(orden.DeliveryClienteTelefono))
               esc.PrintLine($"TEL:     {orden.DeliveryClienteTelefono}");
@@ -509,7 +514,7 @@ public class ImpresionService : IImpresionService
         foreach (var item in orden.FacturaServicios)
         {
             esc.BoldOn()
-               .Print3Columns(item.Cantidad.ToString(), item.Servicio.Nombre, $"C${item.Monto:N2}")
+               .Print3Columns(item.Cantidad.ToString(), item.Servicio?.Nombre ?? "Producto", $"C${item.Monto:N2}")
                .BoldOff();
 
             var opciones = StringFragmentOpcionesLinea(item);
@@ -568,7 +573,7 @@ public class ImpresionService : IImpresionService
         foreach (var item in orden.FacturaServicios)
         {
             esc.BoldOn()
-               .Print3Columns(item.Cantidad.ToString(), item.Servicio.Nombre, $"C${item.Monto:N2}")
+               .Print3Columns(item.Cantidad.ToString(), item.Servicio?.Nombre ?? "Producto", $"C${item.Monto:N2}")
                .BoldOff();
 
             var opciones = StringFragmentOpcionesLinea(item);
@@ -649,7 +654,7 @@ public class ImpresionService : IImpresionService
            .BoldOff()
            .DrawDivider()
            .AlignLeft()
-           .PrintLine($"CAJERO: {cierre.Usuario?.NombreCompleto ?? "N/A"}")
+           .PrintLine($"CAJERO: {cierre.Usuario?.NombreCompleto ?? "Sin registro"}")
            .DrawDivider()
            .PrintColumns("FONDO INICIAL:", $"C$ {cierre.MontoInicial ?? 0:N2}")
            .PrintColumns("TOTAL VENTAS (INGRESOS):", $"C$ {cierre.TotalGeneral:N2}")
@@ -706,41 +711,32 @@ public class ImpresionService : IImpresionService
         string mesaStr;
         if (string.Equals(orden.OrigenPedido, SD.OrigenPedidoDelivery, StringComparison.OrdinalIgnoreCase))
         {
-            mesaStr = "ORIGEN: DELIVERY";
+            mesaStr = "ORIGEN: Delivery";
         }
         else if (!string.IsNullOrEmpty(orden.OrigenPedido) && orden.OrigenPedido.Trim().ToLower() != "salon")
         {
-            mesaStr = $"ORIGEN: {orden.OrigenPedido.ToUpper()}";
+            mesaStr = $"ORIGEN: {orden.OrigenPedido}";
         }
         else
         {
-            var ubicacionNombre = orden.Mesa?.Ubicacion?.Nombre?.ToUpper();
-            if (!string.IsNullOrWhiteSpace(ubicacionNombre))
-            {
-                mesaStr = $"ORIGEN: {ubicacionNombre} {orden.Mesa?.Numero ?? "S/M"}";
-            }
-            else
-            {
-                mesaStr = $"ORIGEN: MESA {orden.Mesa?.Numero ?? "S/M"}";
-            }
+            mesaStr = $"ORIGEN: Mesa {orden.Mesa?.Numero ?? "S/M"}";
         }
         
-        var ahora = DateTime.Now;
-        var fechaStr = $"FECHA: {ahora:dd/MM/yyyy HH:mm}";
         var ordenStr = $"ORDEN: #{orden.Numero}";
-        var meseroStr = $"MESERO: {orden.Mesero?.NombreCompleto ?? "N/A"}";
+        var meseroStr = $"MESERO: {orden.Mesero?.NombreCompleto ?? "Sin registro"}";
 
-        esc.PrintColumns(fechaStr, ordenStr);
+        esc.PrintLine(ordenStr);
         esc.PrintLine(mesaStr);
         esc.PrintLine(meseroStr);
 
         if (string.Equals(orden.OrigenPedido, SD.OrigenPedidoDelivery, StringComparison.OrdinalIgnoreCase))
         {
-            var nombre = string.IsNullOrWhiteSpace(orden.DeliveryClienteNombre) ? "Sin Nombre" : orden.DeliveryClienteNombre;
-            esc.BoldOn()
-               .PrintLine($"CLIENTE: {nombre}")
-               .BoldOff();
-            
+            if (!string.IsNullOrWhiteSpace(orden.DeliveryClienteNombre))
+            {
+                esc.BoldOn()
+                   .PrintLine($"CLIENTE: {orden.DeliveryClienteNombre}")
+                   .BoldOff();
+            }
             if (!string.IsNullOrWhiteSpace(orden.DeliveryClienteTelefono))
             {
                 esc.PrintLine($"TEL:     {orden.DeliveryClienteTelefono}");
