@@ -113,12 +113,12 @@ public class CatalogosApiController : BaseApiController
         var item = _context.CategoriasProducto.FirstOrDefault(c => c.Id == id);
         if (item == null) return FailResponse("Categoría no encontrada.", StatusCodes.Status404NotFound);
 
-        var enUso = _context.Servicios.Any(s => s.CategoriaProductoId == id && s.Activo);
-        if (enUso) return FailResponse("No se puede eliminar una categoría en uso.");
+        var enUso = _context.Servicios.Any(s => s.CategoriaProductoId == id);
+        if (enUso) return FailResponse("No se puede eliminar porque existen productos asignados a esta categoría. Elimínalos o muévelos primero.");
 
-        item.Activo = false;
+        _context.CategoriasProducto.Remove(item);
         _context.SaveChanges();
-        return OkResponse(new { item.Id }, "Categoría desactivada");
+        return OkResponse(new { item.Id }, "Categoría eliminada permanentemente");
     }
 
     [HttpGet("ubicaciones")]
