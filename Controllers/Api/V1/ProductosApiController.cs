@@ -246,9 +246,20 @@ public class ProductosApiController : BaseApiController
         var producto = _context.Servicios.FirstOrDefault(s => s.Id == id);
         if (producto == null) return FailResponse("Producto no encontrado.", StatusCodes.Status404NotFound);
 
-        producto.Activo = false;
+        // Validar si el producto ya fue vendido en alguna orden
+        var tieneVentas = _context.FacturaServicios.Any(fs => fs.ServicioId == id);
+        if (tieneVentas)
+        {
+            // Soft-delete para proteger el historial financiero
+            producto.Activo = false;
+            _context.SaveChanges();
+            return OkResponse(new { producto.Id }, "El producto tiene historial de ventas, por lo que fue desactivado (ocultado) para proteger la contabilidad.");
+        }
+
+        // Hard-delete si el producto nunca se ha vendido
+        _context.Servicios.Remove(producto);
         _context.SaveChanges();
-        return OkResponse(new { producto.Id }, "Producto desactivado");
+        return OkResponse(new { producto.Id }, "Producto eliminado permanentemente");
     }
 
     /// <summary>
