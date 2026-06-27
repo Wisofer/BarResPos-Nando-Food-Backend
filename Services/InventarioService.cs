@@ -64,7 +64,7 @@ public class InventarioService : IInventarioService
             throw new Exception("Producto no encontrado");
 
         var stockAnterior = producto.Stock;
-        var stockNuevo = stockAnterior + cantidad;
+        var stockNuevo = producto.ControlarStock ? stockAnterior + cantidad : stockAnterior;
         var costoTotal = costoUnitario.HasValue ? costoUnitario.Value * cantidad : (decimal?)null;
 
         var movimiento = new MovimientoInventario
@@ -84,8 +84,11 @@ public class InventarioService : IInventarioService
             StockNuevo = stockNuevo
         };
 
-        // Actualizar stock del producto
-        producto.Stock = stockNuevo;
+        // Actualizar stock del producto solo si controla stock
+        if (producto.ControlarStock)
+        {
+            producto.Stock = stockNuevo;
+        }
 
         _context.MovimientosInventario.Add(movimiento);
         _context.SaveChanges();
@@ -98,12 +101,16 @@ public class InventarioService : IInventarioService
         var producto = _context.Servicios.FirstOrDefault(p => p.Id == productoId);
         if (producto == null)
             throw new Exception("Producto no encontrado");
-        if (!producto.ControlarStock || cantidad <= 0)
+        if (cantidad <= 0)
             return;
 
         var stockAnterior = producto.Stock;
-        var stockNuevo = stockAnterior + cantidad;
-        producto.Stock = stockNuevo;
+        var stockNuevo = producto.ControlarStock ? stockAnterior + cantidad : stockAnterior;
+        
+        if (producto.ControlarStock)
+        {
+            producto.Stock = stockNuevo;
+        }
 
         _context.MovimientosInventario.Add(new MovimientoInventario
         {

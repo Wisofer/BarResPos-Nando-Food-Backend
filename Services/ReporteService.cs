@@ -229,7 +229,7 @@ public class ReporteService : IReporteService
             .ToList();
     }
 
-    public async Task<List<ProductoTopReporte>> ObtenerProductosTopAsync(DateTime? desde, DateTime? hasta, int top)
+    public async Task<List<ProductoTopReporte>> ObtenerProductosTopAsync(DateTime? desde, DateTime? hasta, int top, bool peores = false)
     {
         var (fDesde, fHasta) = ResolverRango(desde, hasta, DateTime.Today.AddDays(-30));
         var limit = Math.Min(Math.Max(top, 1), 100);
@@ -262,7 +262,7 @@ public class ReporteService : IReporteService
             Moneda: MonedaDeFactura(l.FacturaId, pagosBatch)
         )).ToList();
 
-        var topProductos = enriched.GroupBy(x => x.ProductoId)
+        var queryProductos = enriched.GroupBy(x => x.ProductoId)
             .Select(g => new
             {
                 ProductoId = g.Key,
@@ -270,8 +270,11 @@ public class ReporteService : IReporteService
                 Venta = g.Sum(x => x.Total),
                 Categoria = g.First().Categoria,
                 Producto = g.First().Nombre
-            })
-            .OrderByDescending(x => x.Cantidad)
+            });
+
+        var topProductos = (peores 
+                ? queryProductos.OrderBy(x => x.Cantidad) 
+                : queryProductos.OrderByDescending(x => x.Cantidad))
             .Take(limit)
             .ToList();
 

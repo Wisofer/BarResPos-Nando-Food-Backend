@@ -86,7 +86,6 @@ public class OrdenLineasReemplazoService
                 if (delta == 0) continue;
 
                 var svc = serviciosInventario[productoId];
-                if (!svc.ControlarStock) continue;
 
                 try
                 {
@@ -128,10 +127,11 @@ public class OrdenLineasReemplazoService
             foreach (var fs in pedido.FacturaServicios.ToList())
             {
                 var matchedReq = items.FirstOrDefault(item => 
-                    item.ServicioId == fs.ServicioId &&
-                    (fs.Notas ?? "").Trim() == (item.Notas ?? "").Trim() &&
-                    OpcionesSonIguales(item.OpcionesSeleccionadas, fs.OpcionesSeleccionadas) &&
-                    !lineasConsumidas.Contains(item)
+                    !lineasConsumidas.Contains(item) && 
+                    ((item.Id.HasValue && item.Id.Value == fs.Id) ||
+                     (!item.Id.HasValue && item.ServicioId == fs.ServicioId &&
+                      (fs.Notas ?? "").Trim() == (item.Notas ?? "").Trim() &&
+                      OpcionesSonIguales(item.OpcionesSeleccionadas, fs.OpcionesSeleccionadas)))
                 );
 
                 if (matchedReq != null)

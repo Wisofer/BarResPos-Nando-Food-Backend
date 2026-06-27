@@ -19,6 +19,7 @@ public class ActualizarPedidoRequest
 
 public class ActualizarPedidoItemRequest
 {
+    public int? Id { get; set; }
     public int ServicioId { get; set; }
     public int Cantidad { get; set; }
     public decimal? PrecioUnitario { get; set; }

@@ -139,26 +139,23 @@ public class PosApiController : BaseApiController
                 var subtotal = Math.Round(precioUnitario * p.Cantidad, 2, MidpointRounding.AwayFromZero);
                 montoAgregado += subtotal;
 
-                if (producto.ControlarStock)
+                try
                 {
-                    try
-                    {
-                        _inventarioService.RegistrarSalida(
-                            producto.Id,
-                            p.Cantidad,
-                            SD.SubtipoMovimientoVenta,
-                            orden.Id,
-                            $"Venta POS — orden {orden.Numero}",
-                            userId.Value);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error al descontar stock producto {ProductoId} orden {OrdenId}", producto.Id, orden.Id);
-                        tx.Rollback();
-                        return FailResponse(
-                            $"No se pudo reservar stock para {producto.Nombre}: {ex.Message}",
-                            StatusCodes.Status409Conflict);
-                    }
+                    _inventarioService.RegistrarSalida(
+                        producto.Id,
+                        p.Cantidad,
+                        SD.SubtipoMovimientoVenta,
+                        orden.Id,
+                        $"Venta POS — orden {orden.Numero}",
+                        userId.Value);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error al descontar stock producto {ProductoId} orden {OrdenId}", producto.Id, orden.Id);
+                    tx.Rollback();
+                    return FailResponse(
+                        $"No se pudo registrar movimiento/stock para {producto.Nombre}: {ex.Message}",
+                        StatusCodes.Status409Conflict);
                 }
 
                 var linea = new FacturaServicio

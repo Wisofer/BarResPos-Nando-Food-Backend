@@ -137,11 +137,11 @@ public class ReportesApiController : BaseApiController
     }
 
     [HttpGet("productos-top")]
-    public async Task<IActionResult> ProductosTop([FromQuery] DateTime? desde, [FromQuery] DateTime? hasta, [FromQuery] int top = 10, [FromQuery] bool exportar = false)
+    public async Task<IActionResult> ProductosTop([FromQuery] DateTime? desde, [FromQuery] DateTime? hasta, [FromQuery] int top = 10, [FromQuery] bool peores = false, [FromQuery] bool exportar = false)
     {
         try
         {
-            var items = await _reporteService.ObtenerProductosTopAsync(desde, hasta, top);
+            var items = await _reporteService.ObtenerProductosTopAsync(desde, hasta, top, peores);
             if (exportar)
             {
                 var fDesde = desde ?? DateTime.Today.AddDays(-30);

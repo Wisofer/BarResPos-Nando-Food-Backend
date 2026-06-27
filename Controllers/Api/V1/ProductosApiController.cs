@@ -556,6 +556,7 @@ public class ProductosApiController : BaseApiController
                 m.Id,
                 m.ProductoId,
                 ProductoJoin = m.Producto != null ? m.Producto.Nombre : null,
+                CategoriaJoin = (m.Producto != null && m.Producto.CategoriaProducto != null) ? m.Producto.CategoriaProducto.RequiereCocina : false,
                 m.Tipo,
                 m.Subtipo,
                 m.Cantidad,
@@ -574,17 +575,22 @@ public class ProductosApiController : BaseApiController
         // Fallback robusto para históricos con relación rota o join nulo:
         // 1) intenta con nombre por join, 2) intenta lookup por ProductoId, 3) usa "Producto #id".
         var idsProductos = pageItems.Select(i => i.ProductoId).Distinct().ToList();
-        var nombresPorId = _context.Servicios
+        var infoPorId = _context.Servicios
             .AsNoTracking()
+            .Include(s => s.CategoriaProducto)
             .Where(s => idsProductos.Contains(s.Id))
-            .Select(s => new { s.Id, s.Nombre })
-            .ToDictionary(x => x.Id, x => x.Nombre);
+            .Select(s => new { s.Id, s.Nombre, RequiereCocina = s.CategoriaProducto != null && s.CategoriaProducto.RequiereCocina })
+            .ToDictionary(x => x.Id, x => new { x.Nombre, x.RequiereCocina });
 
         var items = pageItems.Select(i =>
         {
             var nombreProducto = !string.IsNullOrWhiteSpace(i.ProductoJoin)
                 ? i.ProductoJoin
-                : (nombresPorId.TryGetValue(i.ProductoId, out var n) ? n : $"Producto #{i.ProductoId}");
+                : (infoPorId.TryGetValue(i.ProductoId, out var info) ? info.Nombre : $"Producto #{i.ProductoId}");
+            
+            var esCocina = !string.IsNullOrWhiteSpace(i.ProductoJoin) 
+                ? i.CategoriaJoin 
+                : (infoPorId.TryGetValue(i.ProductoId, out var info2) ? info2.RequiereCocina : false);
 
             return new
             {
@@ -592,6 +598,7 @@ public class ProductosApiController : BaseApiController
                 i.ProductoId,
                 Producto = nombreProducto,
                 productoNombre = nombreProducto,
+                CategoriaProducto = esCocina ? "Cocina" : "Barra",
                 i.Tipo,
                 i.Subtipo,
                 i.Cantidad,
@@ -638,6 +645,7 @@ public class ProductosApiController : BaseApiController
         {
             Fecha = m.Fecha,
             Producto = m.Producto?.Nombre ?? "Eliminado",
+            Categoria = (m.Producto?.CategoriaProducto?.RequiereCocina ?? false) ? "Cocina" : "Barra",
             Tipo = m.Tipo,
             Subtipo = m.Subtipo,
             Cantidad = m.Cantidad,

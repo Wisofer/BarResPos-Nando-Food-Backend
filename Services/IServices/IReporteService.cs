@@ -9,7 +9,7 @@ public interface IReporteService
     Task<VentaTicketCompletoReporte?> ObtenerTicketCompletoPorOrdenIdAsync(int ordenId);
     Task<List<VentaPorCategoriaReporte>> ObtenerVentasPorCategoriaAsync(DateTime? desde, DateTime? hasta);
     Task<List<VentaPorCategoriaConDesgloseReporte>> ObtenerVentasPorCategoriaConDesgloseAsync(DateTime? desde, DateTime? hasta);
-    Task<List<ProductoTopReporte>> ObtenerProductosTopAsync(DateTime? desde, DateTime? hasta, int top);
+    Task<List<ProductoTopReporte>> ObtenerProductosTopAsync(DateTime? desde, DateTime? hasta, int top, bool peores = false);
     Task<List<VentaPorMeseroReporte>> ObtenerVentasPorMeseroAsync(DateTime? desde, DateTime? hasta);
 
     byte[] GenerarExcelVentas(DateTime desde, DateTime hasta, List<VentaDetalleReporte> ventas);
