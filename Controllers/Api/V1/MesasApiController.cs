@@ -246,9 +246,20 @@ public class MesasApiController : BaseApiController
         var mesa = _context.Mesas.FirstOrDefault(m => m.Id == id && m.Activo);
         if (mesa == null) return FailResponse("Mesa no encontrada.", StatusCodes.Status404NotFound);
 
-        mesa.Activo = false;
+        // Validar si la mesa ya tiene historial de facturas/comandas
+        var tieneVentas = _context.Facturas.Any(f => f.MesaId == id);
+        if (tieneVentas)
+        {
+            // Soft-delete para proteger el historial financiero y operativo
+            mesa.Activo = false;
+            _context.SaveChanges();
+            return OkResponse(new { mesa.Id }, "La mesa tiene historial de comandas previas, por lo que fue desactivada (ocultada) para proteger los reportes de ventas.");
+        }
+
+        // Hard-delete si la mesa nunca fue usada
+        _context.Mesas.Remove(mesa);
         _context.SaveChanges();
-        return OkResponse(new { mesa.Id }, "Mesa desactivada");
+        return OkResponse(new { mesa.Id }, "Mesa eliminada permanentemente");
     }
 }
 

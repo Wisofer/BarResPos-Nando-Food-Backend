@@ -206,12 +206,12 @@ public class CatalogosApiController : BaseApiController
         var item = _context.Ubicaciones.FirstOrDefault(u => u.Id == id);
         if (item == null) return FailResponse("Ubicación no encontrada.", StatusCodes.Status404NotFound);
 
-        var enUso = _context.Mesas.Any(m => m.UbicacionId == id && m.Activo);
-        if (enUso) return FailResponse("No se puede eliminar una ubicación en uso por mesas activas.");
+        var enUso = _context.Mesas.Any(m => m.UbicacionId == id);
+        if (enUso) return FailResponse("No se puede eliminar porque existen mesas asignadas a esta ubicación. Elimínalas o muévelas primero.");
 
-        item.Activo = false;
+        _context.Ubicaciones.Remove(item);
         _context.SaveChanges();
-        return OkResponse(new { item.Id }, "Ubicación desactivada");
+        return OkResponse(new { item.Id }, "Ubicación eliminada permanentemente");
     }
 
     [HttpGet("proveedores")]
@@ -316,9 +316,12 @@ public class CatalogosApiController : BaseApiController
         var item = _context.Proveedores.FirstOrDefault(p => p.Id == id);
         if (item == null) return FailResponse("Proveedor no encontrado.", StatusCodes.Status404NotFound);
 
-        item.Activo = false;
+        var enUso = _context.Servicios.Any(s => s.ProveedorId == id);
+        if (enUso) return FailResponse("No se puede eliminar porque existen productos asignados a este proveedor. Elimínalos o muévelos primero.");
+
+        _context.Proveedores.Remove(item);
         _context.SaveChanges();
-        return OkResponse(new { item.Id }, "Proveedor desactivado");
+        return OkResponse(new { item.Id }, "Proveedor eliminado permanentemente");
     }
 }
 
