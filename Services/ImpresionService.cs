@@ -152,7 +152,6 @@ public class ImpresionService : IImpresionService
         }
 
         var mesaNum = orden.Mesa?.Numero ?? "S/M";
-        var mesaStr = mesaNum == "S/M" || mesaNum.StartsWith("Mesa", StringComparison.OrdinalIgnoreCase) ? mesaNum : $"Mesa {mesaNum}";
 
         return esc.DrawDivider()
            .AlignLeft()
@@ -160,7 +159,7 @@ public class ImpresionService : IImpresionService
            .PrintLine($"{tipoTicket}: {numero}")
            .BoldOff()
            .PrintLine($"FECHA:  {fecha:dd/MM/yyyy HH:mm}")
-           .PrintLine($"ORIGEN: {mesaStr}")
+           .PrintLine($"ORIGEN: {mesaNum}")
            .PrintLine($"MESERO: {orden.Mesero?.NombreCompleto ?? "Sin registro"}")
            .DrawDivider();
     }
@@ -204,16 +203,10 @@ public class ImpresionService : IImpresionService
         {
             mesaStr = "ORIGEN: Delivery";
         }
-        else if (!string.IsNullOrEmpty(orden.OrigenPedido) && orden.OrigenPedido.Trim().ToLower() != "salon")
-        {
-            mesaStr = $"ORIGEN: {orden.OrigenPedido}";
-        }
         else
         {
             var mesaNum = orden.Mesa?.Numero ?? "S/M";
-            var mStr = mesaNum == "S/M" || mesaNum.StartsWith("Mesa", StringComparison.OrdinalIgnoreCase) ? mesaNum : $"Mesa {mesaNum}";
-            // Pedidos de salón: ORIGEN con número de mesa, sin nombre de ubicación
-            mesaStr = $"ORIGEN: {mStr}";
+            mesaStr = $"ORIGEN: {mesaNum}";
         }
         var ordenStr = $"ORDEN: #{numero}";
         var meseroStr = $"MESERO: {orden.Mesero?.NombreCompleto ?? "Sin registro"}";
