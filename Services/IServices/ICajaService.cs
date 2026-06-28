@@ -13,7 +13,7 @@ public interface ICajaService
     Task<PagedResult<CierreCaja>> ObtenerHistorialAsync(int page, int pageSize, DateTime? desde = null, DateTime? hasta = null);
     Task<List<CierreCaja>> ObtenerHistorialParaExportAsync(DateTime? desde, DateTime? hasta);
     Task<CierreCaja?> ObtenerCierrePorIdAsync(int id);
-    Task<List<object>> ObtenerPagosPorFechaCierreAsync(DateTime fechaCierre);
+    Task<List<object>> ObtenerPagosPorCierreAsync(CierreCaja cierre);
 }
 
 public class EstadoCajaResponse

@@ -123,41 +123,45 @@ public class CocinaApiController : BaseApiController
         if (!CocinaCatalogoHelper.FacturaServicioRequiereCocina(item) && !CocinaCatalogoHelper.FacturaServicioRequiereBar(item))
             return FailResponse("Este ítem no participa en cocina/bar.", StatusCodes.Status409Conflict);
 
-        item.Estado = request.Estado.Trim();
-        _context.SaveChanges();
-
-        // Recalcular estado global de cocina de la orden
+        // Recalcular estado global de cocina de la orden - Buscar orden primero
         var orden = _context.Facturas
             .Include(f => f.FacturaServicios).ThenInclude(i => i.Servicio).ThenInclude(s => s.CategoriaProducto)
             .FirstOrDefault(f => f.Id == item.FacturaId);
 
-        if (orden != null)
-        {
-            var lineasCocinaBar = orden.FacturaServicios
-                .Where(l => CocinaCatalogoHelper.FacturaServicioRequiereCocina(l) || CocinaCatalogoHelper.FacturaServicioRequiereBar(l))
-                .ToList();
+        if (orden == null) return FailResponse("Orden no encontrada.", StatusCodes.Status404NotFound);
 
-            if (lineasCocinaBar.Any())
+        if (orden.Estado == SD.EstadoOrdenPagado || orden.Estado == SD.EstadoOrdenCancelado)
+        {
+            return FailResponse("No se puede cambiar estado de cocina de una orden pagada o cancelada.", StatusCodes.Status409Conflict);
+        }
+
+        item.Estado = request.Estado.Trim();
+        _context.SaveChanges();
+
+        var lineasCocinaBar = orden.FacturaServicios
+            .Where(l => CocinaCatalogoHelper.FacturaServicioRequiereCocina(l) || CocinaCatalogoHelper.FacturaServicioRequiereBar(l))
+            .ToList();
+
+        if (lineasCocinaBar.Any())
+        {
+            if (lineasCocinaBar.All(l => l.Estado == SD.EstadoCocinaEntregado))
             {
-                if (lineasCocinaBar.All(l => l.Estado == SD.EstadoCocinaEntregado))
-                {
-                    orden.EstadoCocina = SD.EstadoCocinaEntregado;
-                }
-                else if (lineasCocinaBar.All(l => l.Estado == SD.EstadoCocinaListo || l.Estado == SD.EstadoCocinaEntregado))
-                {
-                    orden.EstadoCocina = SD.EstadoCocinaListo;
-                    orden.FechaListo = DateTime.Now;
-                }
-                else if (lineasCocinaBar.All(l => l.Estado == SD.EstadoCocinaPendiente))
-                {
-                    orden.EstadoCocina = SD.EstadoCocinaPendiente;
-                }
-                else
-                {
-                    orden.EstadoCocina = SD.EstadoCocinaEnPreparacion;
-                }
-                _context.SaveChanges();
+                orden.EstadoCocina = SD.EstadoCocinaEntregado;
             }
+            else if (lineasCocinaBar.All(l => l.Estado == SD.EstadoCocinaListo || l.Estado == SD.EstadoCocinaEntregado))
+            {
+                orden.EstadoCocina = SD.EstadoCocinaListo;
+                orden.FechaListo = DateTime.Now;
+            }
+            else if (lineasCocinaBar.All(l => l.Estado == SD.EstadoCocinaPendiente))
+            {
+                orden.EstadoCocina = SD.EstadoCocinaPendiente;
+            }
+            else
+            {
+                orden.EstadoCocina = SD.EstadoCocinaEnPreparacion;
+            }
+            _context.SaveChanges();
         }
 
         return OkResponse(new { item.Id, item.Estado }, "Estado del item y de la orden actualizados");

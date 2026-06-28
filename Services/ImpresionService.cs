@@ -40,7 +40,7 @@ public class ImpresionService : IImpresionService
         {
             nombre = _configuration["Tickets:NombreRestaurante"]?.Trim() ?? "Bar Rest POS";
         }
-        return nombre;
+        return nombre ?? "Bar Rest POS";
     }
 
     private string ObtenerDireccionRestaurante()
@@ -55,7 +55,7 @@ public class ImpresionService : IImpresionService
         {
             direccion = _configuration["Tickets:DireccionRestaurante"]?.Trim() ?? "";
         }
-        return direccion;
+        return direccion ?? "";
     }
 
     private string ObtenerTelefonoRestaurante()
@@ -70,7 +70,7 @@ public class ImpresionService : IImpresionService
         {
             telefono = _configuration["Tickets:TelefonoRestaurante"]?.Trim() ?? "";
         }
-        return telefono;
+        return telefono ?? "";
     }
 
     private string ObtenerRucRestaurante()
@@ -85,10 +85,10 @@ public class ImpresionService : IImpresionService
         {
             ruc = _configuration["Tickets:RucRestaurante"]?.Trim() ?? "";
         }
-        return ruc;
+        return ruc ?? "";
     }
 
-    private string ObtenerLogoFisico()
+    private string? ObtenerLogoFisico()
     {
         var logoUrl = _context.Configuraciones
             .Where(c => c.Clave == "Tickets:LogoUrl")

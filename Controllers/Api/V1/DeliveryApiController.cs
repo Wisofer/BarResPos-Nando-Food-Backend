@@ -122,8 +122,10 @@ public class DeliveryApiController : BaseApiController
         if (!userId.HasValue)
             return FailResponse("Usuario no autenticado.", StatusCodes.Status401Unauthorized);
 
+        bool permitirModificarPrecios = SecurityHelper.HasAnyRole(User, SD.RolAdministrador, SD.RolCajero, SD.RolCaja);
+
         var refPedido = string.IsNullOrWhiteSpace(pedido.Numero) ? $"#{pedido.Id}" : pedido.Numero;
-        var errLineas = _lineasService.ReemplazarLineas(_context, _inventarioService, pedido, request.Items, userId.Value, refPedido);
+        var errLineas = _lineasService.ReemplazarLineas(_context, _inventarioService, pedido, request.Items, userId.Value, refPedido, permitirModificarPrecios);
         if (errLineas != null)
             return FailResponse(errLineas, StatusCodes.Status400BadRequest);
 
@@ -621,6 +623,11 @@ public class DeliveryApiController : BaseApiController
     {
         if (request.OrdenId <= 0) return FailResponse("Pedido delivery inválido.");
         if (string.IsNullOrWhiteSpace(request.TipoPago)) return FailResponse("Tipo de pago es requerido.");
+        if (request.MontoPagado < 0) return FailResponse("El monto pagado no puede ser negativo.", StatusCodes.Status400BadRequest);
+        if (request.MontoCordobasFisico < 0) return FailResponse("El desglose de córdobas físico no puede ser negativo.", StatusCodes.Status400BadRequest);
+        if (request.MontoDolaresFisico < 0) return FailResponse("El desglose de dólares físico no puede ser negativo.", StatusCodes.Status400BadRequest);
+        if (request.MontoCordobasElectronico < 0) return FailResponse("El desglose de córdobas electrónico no puede ser negativo.", StatusCodes.Status400BadRequest);
+        if (request.MontoDolaresElectronico < 0) return FailResponse("El desglose de dólares electrónico no puede ser negativo.", StatusCodes.Status400BadRequest);
 
         var descuento = request.DescuentoMonto ?? 0m;
         descuento = Math.Round(descuento, 2, MidpointRounding.AwayFromZero);

@@ -27,7 +27,8 @@ public class OrdenLineasReemplazoService
         Factura pedido,
         List<ActualizarPedidoItemRequest> items,
         int userId,
-        string refPedidoLog)
+        string refPedidoLog,
+        bool permitirModificarPrecios = false)
     {
         if (items.Count == 0)
             return "Debe incluir al menos un item.";
@@ -126,13 +127,23 @@ public class OrdenLineasReemplazoService
 
             foreach (var fs in pedido.FacturaServicios.ToList())
             {
+                // First pass: match by ID
                 var matchedReq = items.FirstOrDefault(item => 
                     !lineasConsumidas.Contains(item) && 
-                    ((item.Id.HasValue && item.Id.Value == fs.Id) ||
-                     (!item.Id.HasValue && item.ServicioId == fs.ServicioId &&
-                      (fs.Notas ?? "").Trim() == (item.Notas ?? "").Trim() &&
-                      OpcionesSonIguales(item.OpcionesSeleccionadas, fs.OpcionesSeleccionadas)))
+                    item.Id.HasValue && item.Id.Value == fs.Id
                 );
+
+                // Second pass fallback: match by product/notes only if item is pending (for legacy/third-party clients)
+                if (matchedReq == null && fs.Estado == SD.EstadoCocinaPendiente)
+                {
+                    matchedReq = items.FirstOrDefault(item => 
+                        !lineasConsumidas.Contains(item) && 
+                        !item.Id.HasValue && 
+                        item.ServicioId == fs.ServicioId &&
+                        (fs.Notas ?? "").Trim() == (item.Notas ?? "").Trim() &&
+                        OpcionesSonIguales(item.OpcionesSeleccionadas, fs.OpcionesSeleccionadas)
+                    );
+                }
 
                 if (matchedReq != null)
                 {
@@ -144,9 +155,58 @@ public class OrdenLineasReemplazoService
 
                     lineasConsumidas.Add(matchedReq);
                     fs.Cantidad = matchedReq.Cantidad;
+
+                    // --- ACTUALIZAR OPCIONES E INGREDIENTES EXTRAS DE LA LÍNEA EXISTENTE ---
+                    if (!productos.TryGetValue(fs.ServicioId, out var producto))
+                    {
+                        tx.Rollback();
+                        return $"El producto con ID {fs.ServicioId} no está disponible o activo.";
+                    }
+                    var seleccionesDto = (matchedReq.OpcionesSeleccionadas ?? new List<OpcionSeleccionRequest>())
+                        .Select(o => new OpcionSeleccionDto(o.GrupoId, o.OpcionId))
+                        .ToList();
+                    var gruposEf = ProductoOpcionesLineaHelper.GruposEfectivos(producto.OpcionGrupos);
+
+                    decimal precio;
+                    List<FacturaServicioOpcionSeleccion> filasOpc;
+                    if (gruposEf.Count == 0 && seleccionesDto.Count == 0)
+                    {
+                        precio = (permitirModificarPrecios && matchedReq.PrecioUnitario.HasValue && matchedReq.PrecioUnitario.Value >= 0)
+                            ? matchedReq.PrecioUnitario.Value
+                            : producto.Precio;
+                        filasOpc = new List<FacturaServicioOpcionSeleccion>();
+                    }
+                    else
+                    {
+                        var (adicional, filas, errOp) = ProductoOpcionesLineaHelper.ValidarYConstruirFilas(producto, seleccionesDto);
+                        if (errOp != null)
+                        {
+                            tx.Rollback();
+                            return errOp;
+                        }
+
+                        filasOpc = filas;
+                        precio = Math.Round(producto.Precio + adicional, 2, MidpointRounding.AwayFromZero);
+                    }
+
+                    // Limpiar las opciones anteriores si existen en DB y memoria
+                    if (fs.OpcionesSeleccionadas != null && fs.OpcionesSeleccionadas.Count > 0)
+                    {
+                        db.FacturaServicioOpcionesSeleccion.RemoveRange(fs.OpcionesSeleccionadas);
+                        fs.OpcionesSeleccionadas.Clear();
+                    }
+
+                    // Agregar las nuevas opciones
+                    foreach (var op in filasOpc)
+                    {
+                        fs.OpcionesSeleccionadas!.Add(op);
+                    }
+
+                    fs.PrecioUnitario = precio;
                     fs.Monto = Math.Round(fs.PrecioUnitario * matchedReq.Cantidad, 2, MidpointRounding.AwayFromZero);
+                    // ----------------------------------------------------------------------
                     
-                    if (!string.IsNullOrWhiteSpace(matchedReq.Estado))
+                    if (!string.IsNullOrWhiteSpace(matchedReq!.Estado))
                     {
                         fs.Estado = matchedReq.Estado.Trim();
                     }
@@ -170,7 +230,11 @@ public class OrdenLineasReemplazoService
             {
                 if (!lineasConsumidas.Contains(item))
                 {
-                    var producto = productos[item.ServicioId];
+                    if (!productos.TryGetValue(item.ServicioId, out var producto))
+                    {
+                        tx.Rollback();
+                        return $"El producto con ID {item.ServicioId} no está disponible o activo.";
+                    }
                     var seleccionesDto = (item.OpcionesSeleccionadas ?? new List<OpcionSeleccionRequest>())
                         .Select(o => new OpcionSeleccionDto(o.GrupoId, o.OpcionId))
                         .ToList();
@@ -180,7 +244,7 @@ public class OrdenLineasReemplazoService
                     List<FacturaServicioOpcionSeleccion> filasOpc;
                     if (gruposEf.Count == 0 && seleccionesDto.Count == 0)
                     {
-                        precio = item.PrecioUnitario.HasValue && item.PrecioUnitario.Value >= 0
+                        precio = (permitirModificarPrecios && item.PrecioUnitario.HasValue && item.PrecioUnitario.Value >= 0)
                             ? item.PrecioUnitario.Value
                             : producto.Precio;
                         filasOpc = new List<FacturaServicioOpcionSeleccion>();
@@ -309,14 +373,15 @@ public class OrdenLineasReemplazoService
         return (false, null);
     }
 
-    private static bool OpcionesSonIguales(List<OpcionSeleccionRequest>? reqOpts, ICollection<FacturaServicioOpcionSeleccion> dbOpts)
+    private static bool OpcionesSonIguales(List<OpcionSeleccionRequest>? reqOpts, ICollection<FacturaServicioOpcionSeleccion>? dbOpts)
     {
         var rOpts = reqOpts ?? new List<OpcionSeleccionRequest>();
-        if (rOpts.Count != dbOpts.Count) return false;
+        var dOpts = dbOpts ?? new List<FacturaServicioOpcionSeleccion>();
+        if (rOpts.Count != dOpts.Count) return false;
 
         foreach (var ro in rOpts)
         {
-            bool found = dbOpts.Any(dbo => dbo.ProductoOpcionGrupoId == ro.GrupoId && dbo.ProductoOpcionItemId == ro.OpcionId);
+            bool found = dOpts.Any(dbo => dbo.ProductoOpcionGrupoId == ro.GrupoId && dbo.ProductoOpcionItemId == ro.OpcionId);
             if (!found) return false;
         }
         return true;

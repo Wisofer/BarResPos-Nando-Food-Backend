@@ -249,7 +249,7 @@ public class CajaApiController : BaseApiController
         {
             var cierre = await _cajaService.ObtenerCierrePorIdAsync(id);
             if (cierre == null) return FailResponse("Cierre no encontrado.", StatusCodes.Status404NotFound);
-            var pagos = await _cajaService.ObtenerPagosPorFechaCierreAsync(cierre.FechaCierre);
+            var pagos = await _cajaService.ObtenerPagosPorCierreAsync(cierre);
 
             return OkResponse(new
             {

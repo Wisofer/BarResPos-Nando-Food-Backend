@@ -38,6 +38,11 @@ public class VentasApiController : BaseApiController
     {
         if (request.OrdenId <= 0) return FailResponse("Orden inválida.");
         if (string.IsNullOrWhiteSpace(request.TipoPago)) return FailResponse("Tipo de pago es requerido.");
+        if (request.MontoPagado < 0) return FailResponse("El monto pagado no puede ser negativo.", StatusCodes.Status400BadRequest);
+        if (request.MontoCordobasFisico < 0) return FailResponse("El desglose de córdobas físico no puede ser negativo.", StatusCodes.Status400BadRequest);
+        if (request.MontoDolaresFisico < 0) return FailResponse("El desglose de dólares físico no puede ser negativo.", StatusCodes.Status400BadRequest);
+        if (request.MontoCordobasElectronico < 0) return FailResponse("El desglose de córdobas electrónico no puede ser negativo.", StatusCodes.Status400BadRequest);
+        if (request.MontoDolaresElectronico < 0) return FailResponse("El desglose de dólares electrónico no puede ser negativo.", StatusCodes.Status400BadRequest);
 
         var descuento = request.DescuentoMonto ?? 0m;
         descuento = Math.Round(descuento, 2, MidpointRounding.AwayFromZero);

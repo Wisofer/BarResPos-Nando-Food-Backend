@@ -161,6 +161,7 @@ builder.Services.AddScoped<PedidoCancelacionService>();
 
 // Servicio de Impresión
 builder.Services.AddScoped<IImpresionService, ImpresionService>();
+builder.Services.AddSingleton<PrinterQueueManager>();
 
 // Servicio de Exportación a Excel
 builder.Services.AddScoped<ExcelExportService>();

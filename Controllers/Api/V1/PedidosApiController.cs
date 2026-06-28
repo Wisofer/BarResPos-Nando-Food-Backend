@@ -103,6 +103,11 @@ public class PedidosApiController : BaseApiController
     /// </summary>
     private string? VaciarPedidoSinLineas(Factura pedido, int usuarioId, int? mesaIdAlInicio)
     {
+        if (pedido.FacturaServicios.Any(fs => fs.Estado != SD.EstadoCocinaPendiente))
+        {
+            return "Anti-Fraude: No puede vaciar un pedido que contiene productos que ya están en preparación o listos. Pida a un administrador que cancele la orden.";
+        }
+
         using var tx = _context.Database.BeginTransaction();
         try
         {
@@ -586,11 +591,13 @@ public class PedidosApiController : BaseApiController
             if (!userId.HasValue)
                 return FailResponse("Usuario no autenticado.", StatusCodes.Status401Unauthorized);
 
+            bool permitirModificarPrecios = SecurityHelper.HasAnyRole(User, SD.RolAdministrador, SD.RolCajero, SD.RolCaja);
+
             if (request.Items.Count == 0)
             {
                 var errVaciado = VaciarPedidoSinLineas(pedido, userId.Value, mesaIdAlInicio);
                 if (errVaciado != null)
-                    return FailResponse(errVaciado, StatusCodes.Status500InternalServerError);
+                    return FailResponse(errVaciado, StatusCodes.Status400BadRequest);
 
                 return OkResponse(new
                 {
@@ -604,7 +611,7 @@ public class PedidosApiController : BaseApiController
             }
 
             var refPedido = string.IsNullOrWhiteSpace(pedido.Numero) ? $"#{pedido.Id}" : pedido.Numero;
-            var errLineas = _lineasService.ReemplazarLineas(_context, _inventarioService, pedido, request.Items, userId.Value, refPedido);
+            var errLineas = _lineasService.ReemplazarLineas(_context, _inventarioService, pedido, request.Items, userId.Value, refPedido, permitirModificarPrecios);
             if (errLineas != null)
                 return FailResponse(errLineas, StatusCodes.Status400BadRequest);
 

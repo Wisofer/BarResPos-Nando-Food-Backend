@@ -1,6 +1,7 @@
 using BarRestPOS.Data;
 using BarRestPOS.Models.Api;
 using BarRestPOS.Services.IServices;
+using BarRestPOS.Services;
 using BarRestPOS.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,15 +22,18 @@ public class ImpresionApiController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly IImpresionService _impresionService;
     private readonly ILogger<ImpresionApiController> _logger;
+    private readonly PrinterQueueManager _queueManager;
 
     public ImpresionApiController(
         ApplicationDbContext context,
         IImpresionService impresionService,
-        ILogger<ImpresionApiController> logger)
+        ILogger<ImpresionApiController> logger,
+        PrinterQueueManager queueManager)
     {
         _context = context;
         _impresionService = impresionService;
         _logger = logger;
+        _queueManager = queueManager;
     }
 
     private string ObtenerNombreImpresora(string claveConf, string fallback = "")
@@ -50,7 +54,7 @@ public class ImpresionApiController : ControllerBase
 
     [Authorize(Policy = "Cocina")]
     [HttpPost("cocina/{ordenId:int}")]
-    public IActionResult TicketCocina(int ordenId, [FromQuery] string? lineas)
+    public async Task<IActionResult> TicketCocina(int ordenId, [FromQuery] string? lineas)
     {
         try
         {
@@ -73,7 +77,8 @@ public class ImpresionApiController : ControllerBase
             var bytes = _impresionService.GenerarTicketCocina(orden, lineasFilter);
             var printerName = ObtenerNombreImpresora("Tickets:ImpresoraCocina", "Cocina");
 
-            bool ok = RawPrinterHelper.SendBytesToPrinter(printerName, bytes, $"Cocina-{orden.Numero}");
+            bool ok = await _queueManager.RunSerializedAsync(printerName, () =>
+                RawPrinterHelper.SendBytesToPrinter(printerName, bytes, $"Cocina-{orden.Numero}"));
             
             if (!ok) return BadRequest(new { mensaje = $"Error al imprimir. Verifique impresora: {printerName}" });
             return Ok(new { mensaje = "Ticket enviado a cocina", impresora = printerName });
@@ -87,7 +92,7 @@ public class ImpresionApiController : ControllerBase
 
     [Authorize(Policy = "Cocina")]
     [HttpPost("bar/{ordenId:int}")]
-    public IActionResult TicketBar(int ordenId, [FromQuery] string? lineas)
+    public async Task<IActionResult> TicketBar(int ordenId, [FromQuery] string? lineas)
     {
         try
         {
@@ -110,7 +115,8 @@ public class ImpresionApiController : ControllerBase
             var bytes = _impresionService.GenerarTicketBar(orden, lineasFilter);
             var printerName = ObtenerNombreImpresora("Tickets:ImpresoraBar", "Bar");
 
-            bool ok = RawPrinterHelper.SendBytesToPrinter(printerName, bytes, $"Bar-{orden.Numero}");
+            bool ok = await _queueManager.RunSerializedAsync(printerName, () =>
+                RawPrinterHelper.SendBytesToPrinter(printerName, bytes, $"Bar-{orden.Numero}"));
             
             if (!ok) return BadRequest(new { mensaje = $"Error al imprimir. Verifique impresora: {printerName}" });
             return Ok(new { mensaje = "Ticket enviado a bar", impresora = printerName });
@@ -124,7 +130,7 @@ public class ImpresionApiController : ControllerBase
 
     [Authorize(Policy = "Cajero")]
     [HttpPost("recibo/{pagoId:int}")]
-    public IActionResult TicketRecibo(int pagoId)
+    public async Task<IActionResult> TicketRecibo(int pagoId)
     {
         try
         {
@@ -149,7 +155,8 @@ public class ImpresionApiController : ControllerBase
             var bytes = _impresionService.GenerarTicketRecibo(pago, pago.Factura);
             var printerName = ObtenerNombreImpresora("Tickets:ImpresoraCaja", "Caja");
 
-            bool ok = RawPrinterHelper.SendBytesToPrinter(printerName, bytes, $"Recibo-{pago.Factura.Numero}");
+            bool ok = await _queueManager.RunSerializedAsync(printerName, () =>
+                RawPrinterHelper.SendBytesToPrinter(printerName, bytes, $"Recibo-{pago.Factura.Numero}"));
             
             if (!ok) return BadRequest(new { mensaje = $"Error al imprimir. Verifique impresora: {printerName}" });
             return Ok(new { mensaje = "Recibo impreso con éxito", impresora = printerName });
@@ -163,7 +170,7 @@ public class ImpresionApiController : ControllerBase
 
     [Authorize]
     [HttpPost("comanda/{ordenId:int}")]
-    public IActionResult TicketComanda(int ordenId)
+    public async Task<IActionResult> TicketComanda(int ordenId)
     {
         try
         {
@@ -184,7 +191,8 @@ public class ImpresionApiController : ControllerBase
             var bytes = _impresionService.GenerarTicketComanda(orden);
             var printerName = ObtenerNombreImpresora("Tickets:ImpresoraComanda", ObtenerNombreImpresora("Tickets:ImpresoraCaja", "Caja"));
 
-            bool ok = RawPrinterHelper.SendBytesToPrinter(printerName, bytes, $"Comanda-{orden.Numero}");
+            bool ok = await _queueManager.RunSerializedAsync(printerName, () =>
+                RawPrinterHelper.SendBytesToPrinter(printerName, bytes, $"Comanda-{orden.Numero}"));
             
             if (!ok) return BadRequest(new { mensaje = $"Error al imprimir. Verifique impresora: {printerName}" });
             return Ok(new { mensaje = "Comanda impresa con éxito", impresora = printerName });
@@ -274,7 +282,8 @@ public class ImpresionApiController : ControllerBase
             var bytes = _impresionService.GenerarTicketCorte(cierre);
             var printerName = ObtenerNombreImpresora("Tickets:ImpresoraCaja", "Caja");
 
-            bool ok = RawPrinterHelper.SendBytesToPrinter(printerName, bytes, $"Corte-{cierre.Id}");
+            bool ok = await _queueManager.RunSerializedAsync(printerName, () =>
+                RawPrinterHelper.SendBytesToPrinter(printerName, bytes, $"Corte-{cierre.Id}"));
             
             if (!ok) return BadRequest(new { mensaje = $"Error al imprimir. Verifique impresora: {printerName}" });
             return Ok(new { mensaje = "Corte de caja impreso con éxito", impresora = printerName });
@@ -370,7 +379,7 @@ public class ImpresionApiController : ControllerBase
     }
 
     [HttpPost("cancelacion-linea/{facturaId:int}/{lineaId:int}")]
-    public IActionResult CancelarLinea(
+    public async Task<IActionResult> CancelarLinea(
         int facturaId,
         int lineaId,
         [FromBody] CancelarPedidoRequest? request,
@@ -422,7 +431,8 @@ public class ImpresionApiController : ControllerBase
                 : ObtenerNombreImpresora("Tickets:ImpresoraBar", "Bar");
 
             var bytes = _impresionService.GenerarTicketCancelacionItem(orden, linea);
-            bool printOk = RawPrinterHelper.SendBytesToPrinter(printerName, bytes, $"Cancelacion-{orden.Numero}-{linea.Id}");
+            bool printOk = await _queueManager.RunSerializedAsync(printerName, () =>
+                RawPrinterHelper.SendBytesToPrinter(printerName, bytes, $"Cancelacion-{orden.Numero}-{linea.Id}"));
             if (!printOk)
             {
                 _logger.LogWarning("No se pudo imprimir el ticket de cancelación en la impresora: {PrinterName}", printerName);

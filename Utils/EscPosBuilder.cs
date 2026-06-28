@@ -10,6 +10,11 @@ namespace BarRestPOS.Utils;
 
 public class EscPosBuilder
 {
+    private static readonly object _logoCacheLock = new object();
+    private static string? _cachedLogoPath;
+    private static DateTime _cachedLogoLastWrite;
+    private static byte[]? _cachedLogoBytes;
+
     private readonly List<byte> _buffer;
     private readonly StringBuilder _textBuffer;
     private int _currentAlignment = 0; // 0=Left, 1=Center, 2=Right
@@ -174,6 +179,32 @@ public class EscPosBuilder
     {
         if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath)) return this;
 
+        byte[]? cachedBytes = null;
+        DateTime lastWrite = DateTime.MinValue;
+        try
+        {
+            lastWrite = File.GetLastWriteTime(imagePath);
+        }
+        catch
+        {
+            // Ignore File IO error
+        }
+
+        lock (_logoCacheLock)
+        {
+            if (_cachedLogoPath == imagePath && _cachedLogoLastWrite == lastWrite && _cachedLogoBytes != null)
+            {
+                cachedBytes = _cachedLogoBytes;
+            }
+        }
+
+        if (cachedBytes != null)
+        {
+            _buffer.AddRange(cachedBytes);
+            _textBuffer.AppendLine("[LOGO DEL NEGOCIO]");
+            return this;
+        }
+
         try
         {
             using var image = Image.Load<Rgba32>(imagePath);
@@ -192,6 +223,8 @@ public class EscPosBuilder
             image.Mutate(x => x.Grayscale());
 
             int bytesWidth = width / 8;
+            var tempBuffer = new List<byte>();
+
             byte[] header = new byte[] {
                 0x1B, 0x61, 0x01, // Align Center
                 0x1D, 0x76, 0x30, 0x00, // GS v 0 0
@@ -201,7 +234,7 @@ public class EscPosBuilder
                 (byte)(height / 256)
             };
             
-            _buffer.AddRange(header);
+            tempBuffer.AddRange(header);
             
             for (int y = 0; y < height; y++)
             {
@@ -222,12 +255,21 @@ public class EscPosBuilder
                             }
                         }
                     }
-                    _buffer.Add(b);
+                    tempBuffer.Add(b);
                 }
             }
-            _buffer.AddRange(new byte[] { 0x1B, 0x61, 0x00 }); // Restore left align
+            tempBuffer.AddRange(new byte[] { 0x1B, 0x61, 0x00 }); // Restore left align
             
-            // Simulator placeholder
+            byte[] processedBytes = tempBuffer.ToArray();
+
+            lock (_logoCacheLock)
+            {
+                _cachedLogoPath = imagePath;
+                _cachedLogoLastWrite = lastWrite;
+                _cachedLogoBytes = processedBytes;
+            }
+
+            _buffer.AddRange(processedBytes);
             _textBuffer.AppendLine("[LOGO DEL NEGOCIO]");
         }
         catch (Exception ex)

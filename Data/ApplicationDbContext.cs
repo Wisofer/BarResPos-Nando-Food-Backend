@@ -12,7 +12,7 @@ public class ApplicationDbContext : DbContext
         {
             if (args.CurrentState == System.Data.ConnectionState.Open)
             {
-                Database.ExecuteSqlRaw("PRAGMA busy_timeout = 10000;");
+                Database.ExecuteSqlRaw("PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 10000;");
             }
         };
     }
@@ -130,6 +130,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ArchivoPDF).HasMaxLength(500);
             entity.Property(e => e.Observaciones).HasMaxLength(1000);
             entity.Property(e => e.TiempoPreparacion).HasDefaultValue(0);
+            entity.Property(e => e.FechaActualizacion).IsConcurrencyToken();
             
             entity.HasOne(e => e.Mesa)
                 .WithMany(m => m.Ordenes)
@@ -441,6 +442,29 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.Tipo);
             entity.HasIndex(e => new { e.ProductoId, e.Fecha });
         });
+    }
+
+    public override int SaveChanges()
+    {
+        UpdateAuditProperties();
+        return base.SaveChanges();
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        UpdateAuditProperties();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void UpdateAuditProperties()
+    {
+        var entries = ChangeTracker.Entries<Factura>()
+            .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified);
+
+        foreach (var entry in entries)
+        {
+            entry.Entity.FechaActualizacion = DateTime.Now;
+        }
     }
 }
 

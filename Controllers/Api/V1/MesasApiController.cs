@@ -246,6 +246,17 @@ public class MesasApiController : BaseApiController
         var mesa = _context.Mesas.FirstOrDefault(m => m.Id == id && m.Activo);
         if (mesa == null) return FailResponse("Mesa no encontrada.", StatusCodes.Status404NotFound);
 
+        // Validar si la mesa tiene órdenes activas
+        var tieneActivas = _context.Facturas.Any(f =>
+            f.MesaId == id
+            && f.Estado != SD.EstadoOrdenPagado
+            && f.Estado != SD.EstadoOrdenCancelado);
+
+        if (tieneActivas)
+        {
+            return FailResponse("No se puede eliminar o desactivar la mesa porque tiene pedidos activos en cocina o salón.", StatusCodes.Status409Conflict);
+        }
+
         // Validar si la mesa ya tiene historial de facturas/comandas
         var tieneVentas = _context.Facturas.Any(f => f.MesaId == id);
         if (tieneVentas)

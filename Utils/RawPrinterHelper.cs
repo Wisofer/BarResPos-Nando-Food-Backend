@@ -68,16 +68,34 @@ public static class RawPrinterHelper
 
         if (OpenPrinter(szPrinterName.Normalize(), out hPrinter, IntPtr.Zero))
         {
-            if (StartDocPrinter(hPrinter, 1, di))
+            try
             {
-                if (StartPagePrinter(hPrinter))
+                if (StartDocPrinter(hPrinter, 1, di))
                 {
-                    success = WritePrinter(hPrinter, pBytes, dwCount, out dwWritten);
-                    EndPagePrinter(hPrinter);
+                    try
+                    {
+                        if (StartPagePrinter(hPrinter))
+                        {
+                            try
+                            {
+                                success = WritePrinter(hPrinter, pBytes, dwCount, out dwWritten);
+                            }
+                            finally
+                            {
+                                EndPagePrinter(hPrinter);
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        EndDocPrinter(hPrinter);
+                    }
                 }
-                EndDocPrinter(hPrinter);
             }
-            ClosePrinter(hPrinter);
+            finally
+            {
+                ClosePrinter(hPrinter);
+            }
         }
 
         if (!success)

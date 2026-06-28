@@ -66,62 +66,75 @@ public class PosApiController : BaseApiController
                 .FirstOrDefault();
         }
 
-        if (orden == null)
-        {
-            var primerProducto = _context.Servicios.FirstOrDefault(s => s.Id == request.Productos[0].ProductoId && s.Activo);
-            if (primerProducto == null) return FailResponse("Producto principal no encontrado.");
-
-            var esLlevar = EsTipoLlevar(request.Tipo);
-            orden = new Factura
-            {
-                Numero = GenerarNumeroOrden(),
-                MesaId = request.MesaId,
-                ClienteId = request.ClienteId,
-                MeseroId = userId.Value,
-                ServicioId = primerProducto.Id,
-                Categoria = "General",
-                OrigenPedido = esLlevar ? SD.OrigenPedidoLlevar : SD.OrigenPedidoSalon,
-                Monto = 0,
-                // MVP: nueva orden inicia en pendiente para mantener coherencia con "Enviar cocina"
-                Estado = SD.EstadoOrdenPendiente,
-                EstadoCocina = SD.EstadoCocinaPendiente,
-                FechaCreacion = DateTime.Now,
-                FechaListo = null,
-                Observaciones = request.Observaciones
-            };
-            _context.Facturas.Add(orden);
-            _context.SaveChanges();
-        }
-
-        var lineas = request.Productos.Where(p => p.Cantidad > 0).ToList();
-        if (lineas.Count == 0)
-            return FailResponse("Debe agregar al menos un producto con cantidad mayor a 0.");
-
-        var cantidadPorProducto = lineas
-            .GroupBy(p => p.ProductoId)
-            .ToDictionary(g => g.Key, g => g.Sum(x => x.Cantidad));
-
-        var idsLineas = lineas.Select(p => p.ProductoId).Distinct().ToList();
-        var serviciosPorId = _context.Servicios
-            .Include(s => s.OpcionGrupos)
-            .ThenInclude(g => g.Opciones)
-            .Where(s => idsLineas.Contains(s.Id) && s.Activo)
-            .ToDictionary(s => s.Id);
-
-        foreach (var (productoId, cantidadTotal) in cantidadPorProducto)
-        {
-            if (!serviciosPorId.TryGetValue(productoId, out var prod))
-                return FailResponse($"Producto no encontrado o inactivo (id {productoId}).");
-            if (prod.ControlarStock && !_inventarioService.ValidarStockDisponible(productoId, cantidadTotal))
-                return FailResponse(
-                    $"Stock insuficiente para {prod.Nombre}. Disponible: {prod.Stock}, solicitado en esta operación: {cantidadTotal}.",
-                    StatusCodes.Status409Conflict);
-        }
-
-        decimal montoAgregado = 0;
         using var tx = _context.Database.BeginTransaction();
         try
         {
+            if (orden == null)
+            {
+                var primerProducto = _context.Servicios.FirstOrDefault(s => s.Id == request.Productos[0].ProductoId && s.Activo);
+                if (primerProducto == null)
+                {
+                    tx.Rollback();
+                    return FailResponse("Producto principal no encontrado.");
+                }
+
+                var esLlevar = EsTipoLlevar(request.Tipo);
+                orden = new Factura
+                {
+                    Numero = GenerarNumeroOrden(),
+                    MesaId = request.MesaId,
+                    ClienteId = request.ClienteId,
+                    MeseroId = userId.Value,
+                    ServicioId = primerProducto.Id,
+                    Categoria = "General",
+                    OrigenPedido = esLlevar ? SD.OrigenPedidoLlevar : SD.OrigenPedidoSalon,
+                    Monto = 0,
+                    // MVP: nueva orden inicia en pendiente para mantener coherencia con "Enviar cocina"
+                    Estado = SD.EstadoOrdenPendiente,
+                    EstadoCocina = SD.EstadoCocinaPendiente,
+                    FechaCreacion = DateTime.Now,
+                    FechaListo = null,
+                    Observaciones = request.Observaciones
+                };
+                _context.Facturas.Add(orden);
+                _context.SaveChanges();
+            }
+
+            var lineas = request.Productos.Where(p => p.Cantidad > 0).ToList();
+            if (lineas.Count == 0)
+            {
+                tx.Rollback();
+                return FailResponse("Debe agregar al menos un producto con cantidad mayor a 0.");
+            }
+
+            var cantidadPorProducto = lineas
+                .GroupBy(p => p.ProductoId)
+                .ToDictionary(g => g.Key, g => g.Sum(x => x.Cantidad));
+
+            var idsLineas = lineas.Select(p => p.ProductoId).Distinct().ToList();
+            var serviciosPorId = _context.Servicios
+                .Include(s => s.OpcionGrupos)
+                .ThenInclude(g => g.Opciones)
+                .Where(s => idsLineas.Contains(s.Id) && s.Activo)
+                .ToDictionary(s => s.Id);
+
+            foreach (var (productoId, cantidadTotal) in cantidadPorProducto)
+            {
+                if (!serviciosPorId.TryGetValue(productoId, out var prod))
+                {
+                    tx.Rollback();
+                    return FailResponse($"Producto no encontrado o inactivo (id {productoId}).");
+                }
+                if (prod.ControlarStock && !_inventarioService.ValidarStockDisponible(productoId, cantidadTotal))
+                {
+                    tx.Rollback();
+                    return FailResponse(
+                        $"Stock insuficiente para {prod.Nombre}. Disponible: {prod.Stock}, solicitado en esta operación: {cantidadTotal}.",
+                        StatusCodes.Status409Conflict);
+                }
+            }
+
+            decimal montoAgregado = 0;
             foreach (var p in lineas)
             {
                 var producto = serviciosPorId[p.ProductoId];
@@ -186,7 +199,7 @@ public class PosApiController : BaseApiController
         catch (Exception ex)
         {
             tx.Rollback();
-            _logger.LogError(ex, "Error al guardar orden POS {OrdenId}", orden.Id);
+            _logger.LogError(ex, "Error al guardar orden POS {OrdenId}", orden?.Id ?? 0);
             return FailResponse("Error al guardar la orden. Reintente.", StatusCodes.Status500InternalServerError);
         }
 

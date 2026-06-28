@@ -60,10 +60,12 @@ public class CajaService : ICajaService
         if (hayAbierta) throw new Exception("Ya existe una caja abierta en el sistema. Debe cerrar la caja actual antes de abrir una nueva.");
 
         var hoy = DateTime.Today;
+        var ahora = DateTime.Now;
         var cierre = new CierreCaja
         {
             FechaCierre = hoy,
-            FechaHoraCierre = DateTime.Now,
+            FechaHoraApertura = ahora,
+            FechaHoraCierre = ahora,
             UsuarioId = usuarioId,
             MontoInicial = montoInicial,
             Estado = "Abierto",
@@ -91,7 +93,7 @@ public class CajaService : ICajaService
             .FirstOrDefaultAsync(c => c.Estado == "Abierto");
         if (cierre == null) throw new Exception("No hay ninguna caja abierta en el sistema.");
 
-        var inicio = cierre.FechaHoraCierre;
+        var inicio = cierre.FechaHoraApertura;
         var fin = DateTime.Now;
 
         var ordenesPagadas = await _context.Facturas
@@ -117,8 +119,29 @@ public class CajaService : ICajaService
         var totalEfectivo = Math.Round(CajaArqueoHelper.TotalEfectivoNetoArqueo(pagos, tipoCambio), 2, MidpointRounding.AwayFromZero);
         var totalTarjeta = pagos.Where(p => p.TipoPago == "Tarjeta").Sum(p => p.Monto);
         var totalTransferencia = pagos.Where(p => p.TipoPago == "Transferencia").Sum(p => p.Monto);
-        var totalCordobas = pagos.Where(p => p.Moneda == SD.MonedaCordoba).Sum(p => p.Monto);
-        var totalDolares = pagos.Where(p => p.Moneda == SD.MonedaDolar).Sum(p => p.Monto);
+        
+        var totalCordobas = Math.Round(pagos.Sum(p =>
+        {
+            if (p.MontoCordobasFisico.HasValue || p.MontoCordobasElectronico.HasValue)
+            {
+                return (p.MontoCordobasFisico ?? 0) + (p.MontoCordobasElectronico ?? 0);
+            }
+            return p.Moneda == SD.MonedaCordoba ? p.Monto : 0m;
+        }), 2, MidpointRounding.AwayFromZero);
+
+        var totalDolares = Math.Round(pagos.Sum(p =>
+        {
+            if (p.MontoDolaresFisico.HasValue || p.MontoDolaresElectronico.HasValue)
+            {
+                return (p.MontoDolaresFisico ?? 0) + (p.MontoDolaresElectronico ?? 0);
+            }
+            if (p.Moneda == SD.MonedaDolar)
+            {
+                var tcPago = p.TipoCambio ?? tipoCambio;
+                return p.Monto / (tcPago > 0 ? tcPago : SD.TipoCambioDolar);
+            }
+            return 0m;
+        }), 2, MidpointRounding.AwayFromZero);
 
         var totalGeneral = Math.Round(pagos.Sum(p => p.Monto), 2, MidpointRounding.AwayFromZero);
         var montoInicial = cierre.MontoInicial ?? 0;
@@ -212,10 +235,10 @@ public class CajaService : ICajaService
     public Task<CierreCaja?> ObtenerCierrePorIdAsync(int id) =>
         _context.CierresCaja.AsNoTracking().Include(c => c.Usuario).FirstOrDefaultAsync(c => c.Id == id);
 
-    public async Task<List<object>> ObtenerPagosPorFechaCierreAsync(DateTime fechaCierre)
+    public async Task<List<object>> ObtenerPagosPorCierreAsync(CierreCaja cierre)
     {
-        var inicio = fechaCierre.Date;
-        var fin = fechaCierre.Date.AddDays(1).AddSeconds(-1);
+        var inicio = cierre.FechaHoraApertura;
+        var fin = cierre.FechaHoraCierre;
 
         return await _context.Pagos
             .AsNoTracking()

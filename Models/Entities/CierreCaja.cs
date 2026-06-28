@@ -19,6 +19,11 @@ public class CierreCaja
     /// Fecha y hora exacta del cierre
     /// </summary>
     public DateTime FechaHoraCierre { get; set; } = DateTime.Now;
+
+    /// <summary>
+    /// Fecha y hora exacta de la apertura
+    /// </summary>
+    public DateTime FechaHoraApertura { get; set; } = DateTime.Now;
     
     /// <summary>
     /// Usuario que realizó el cierre

@@ -159,129 +159,139 @@ public class PagoService : IPagoService
         // Calcular el monto total según el tipo de pago y monedas
         pago.Monto = CalcularMontoTotal(pago);
 
-        // Si se proporcionan múltiples facturas, usar PagoFactura
-        if (facturaIds != null && facturaIds.Any())
+        using var tx = _context.Database.BeginTransaction();
+        try
         {
-            // Validar que todas las facturas existan y pertenezcan al mismo cliente
-            var facturas = facturaIds.Select(id => _facturaService.ObtenerPorId(id))
-                .Where(f => f != null)
-                .ToList();
-
-            if (facturas.Count != facturaIds.Count)
-                throw new Exception("Una o más facturas no fueron encontradas");
-
-            // Verificar que todas las facturas pertenezcan al mismo cliente
-            var primerClienteId = facturas.First()!.ClienteId;
-            if (facturas.Any(f => f!.ClienteId != primerClienteId))
-                throw new Exception("Todas las facturas deben pertenecer al mismo cliente");
-
-            // Si no se proporcionan montos específicos, distribuir proporcionalmente
-            if (montosAplicados == null || montosAplicados.Count != facturaIds.Count)
+            // Si se proporcionan múltiples facturas, usar PagoFactura
+            if (facturaIds != null && facturaIds.Any())
             {
-                // Calcular saldos pendientes
-                var saldosPendientes = facturas.Select(f =>
+                // Validar que todas las facturas existan y pertenezcan al mismo cliente
+                var facturas = facturaIds.Select(id => _facturaService.ObtenerPorId(id))
+                    .Where(f => f != null)
+                    .ToList();
+
+                if (facturas.Count != facturaIds.Count)
+                    throw new Exception("Una o más facturas no fueron encontradas");
+
+                // Verificar que todas las facturas pertenezcan al mismo cliente
+                var primerClienteId = facturas.First()!.ClienteId;
+                if (facturas.Any(f => f!.ClienteId != primerClienteId))
+                    throw new Exception("Todas las facturas deben pertenecer al mismo cliente");
+
+                // Si no se proporcionan montos específicos, distribuir proporcionalmente
+                if (montosAplicados == null || montosAplicados.Count != facturaIds.Count)
                 {
-                    var totalPagado = ObtenerPorFactura(f!.Id).Sum(p => p.Monto);
-                    return f.Monto - totalPagado;
-                }).ToList();
+                    // Calcular saldos pendientes
+                    var saldosPendientes = facturas.Select(f =>
+                    {
+                        var totalPagado = ObtenerPorFactura(f!.Id).Sum(p => p.Monto);
+                        return f.Monto - totalPagado;
+                    }).ToList();
 
-                var totalSaldoPendiente = saldosPendientes.Sum();
-                if (totalSaldoPendiente <= 0)
-                    throw new Exception("No hay saldo pendiente en las facturas seleccionadas");
+                    var totalSaldoPendiente = saldosPendientes.Sum();
+                    if (totalSaldoPendiente <= 0)
+                        throw new Exception("No hay saldo pendiente en las facturas seleccionadas");
 
-                // Calcular monto total primero
-                var montoTotal = CalcularMontoTotal(pago);
-                
-                // Distribuir el monto proporcionalmente
-                montosAplicados = saldosPendientes.Select(saldo =>
-                    saldo > 0 ? (montoTotal * saldo / totalSaldoPendiente) : 0
-                ).ToList();
-            }
-
-            // Calcular monto total
-            var montoTotalPago = CalcularMontoTotal(pago);
-            pago.Monto = montoTotalPago;
-
-            // Validar que la suma de montos aplicados no exceda el monto del pago
-            var sumaMontos = montosAplicados.Sum();
-            if (sumaMontos > montoTotalPago * 1.01m) // Permitir 1% de diferencia por redondeo
-                throw new Exception($"La suma de montos aplicados ({sumaMontos:N2}) excede el monto del pago ({montoTotalPago:N2})");
-
-            // Establecer FacturaId como null para pagos con múltiples facturas
-            pago.FacturaId = null;
-
-            // Calcular vuelto si es pago físico o mixto
-            if (pago.TipoPago == SD.TipoPagoFisico || pago.TipoPago == SD.TipoPagoMixto)
-            {
-                if (pago.MontoRecibidoFisico.HasValue)
-                {
-                    var tipoCambio = pago.TipoCambio ?? tipoCambioDefault;
-                    var montoFisico = (pago.MontoCordobasFisico ?? 0) + 
-                                     ((pago.MontoDolaresFisico ?? 0) * tipoCambio);
-                    pago.VueltoFisico = CalcularVuelto(pago.MontoRecibidoFisico.Value, montoFisico);
+                    // Calcular monto total primero
+                    var montoTotal = CalcularMontoTotal(pago);
+                    
+                    // Distribuir el monto proporcionalmente
+                    montosAplicados = saldosPendientes.Select(saldo =>
+                        saldo > 0 ? (montoTotal * saldo / totalSaldoPendiente) : 0
+                    ).ToList();
                 }
-                else if (pago.MontoRecibido.HasValue && pago.TipoPago == SD.TipoPagoFisico)
+
+                // Calcular monto total
+                var montoTotalPago = CalcularMontoTotal(pago);
+                pago.Monto = montoTotalPago;
+
+                // Validar que la suma de montos aplicados no exceda el monto del pago
+                var sumaMontos = montosAplicados.Sum();
+                if (sumaMontos > montoTotalPago * 1.01m) // Permitir 1% de diferencia por redondeo
+                    throw new Exception($"La suma de montos aplicados ({sumaMontos:N2}) excede el monto del pago ({montoTotalPago:N2})");
+
+                // Establecer FacturaId como null para pagos con múltiples facturas
+                pago.FacturaId = null;
+
+                // Calcular vuelto si es pago físico o mixto
+                if (pago.TipoPago == SD.TipoPagoFisico || pago.TipoPago == SD.TipoPagoMixto)
                 {
-                    pago.Vuelto = CalcularVuelto(pago.MontoRecibido.Value, montoTotalPago);
+                    if (pago.MontoRecibidoFisico.HasValue)
+                    {
+                        var tipoCambio = pago.TipoCambio ?? tipoCambioDefault;
+                        var montoFisico = (pago.MontoCordobasFisico ?? 0) + 
+                                         ((pago.MontoDolaresFisico ?? 0) * tipoCambio);
+                        pago.VueltoFisico = CalcularVuelto(pago.MontoRecibidoFisico.Value, montoFisico);
+                    }
+                    else if (pago.MontoRecibido.HasValue && pago.TipoPago == SD.TipoPagoFisico)
+                    {
+                        pago.Vuelto = CalcularVuelto(pago.MontoRecibido.Value, montoTotalPago);
+                    }
                 }
-            }
 
-            _context.Pagos.Add(pago);
-            _context.SaveChanges();
+                _context.Pagos.Add(pago);
+                _context.SaveChanges();
 
-            // Crear registros PagoFactura
-            for (int i = 0; i < facturaIds.Count; i++)
-            {
-                var pagoFactura = new PagoFactura
+                // Crear registros PagoFactura
+                for (int i = 0; i < facturaIds.Count; i++)
                 {
-                    PagoId = pago.Id,
-                    FacturaId = facturaIds[i],
-                    MontoAplicado = montosAplicados[i]
-                };
-                _context.PagoFacturas.Add(pagoFactura);
-            }
-            _context.SaveChanges();
+                    var pagoFactura = new PagoFactura
+                    {
+                        PagoId = pago.Id,
+                        FacturaId = facturaIds[i],
+                        MontoAplicado = montosAplicados[i]
+                    };
+                    _context.PagoFacturas.Add(pagoFactura);
+                }
+                _context.SaveChanges();
 
-            // Actualizar estado de cada factura
-            foreach (var factura in facturas)
+                // Actualizar estado de cada factura
+                foreach (var factura in facturas)
+                {
+                    var totalPagado = ObtenerPorFactura(factura!.Id).Sum(p => p.Monto);
+                    if (totalPagado >= factura.Monto)
+                    {
+                        factura.Estado = SD.EstadoFacturaPagada;
+                    }
+                }
+                _context.SaveChanges();
+            }
+            else
             {
-                var totalPagado = ObtenerPorFactura(factura!.Id).Sum(p => p.Monto);
+                // Pago de una sola factura (comportamiento original)
+                if (!pago.FacturaId.HasValue)
+                    throw new Exception("Debe especificar al menos una factura");
+
+                var factura = _facturaService.ObtenerPorId(pago.FacturaId.Value);
+                if (factura == null)
+                    throw new Exception("Factura no encontrada");
+
+                // Calcular vuelto si es pago físico
+                if (pago.TipoPago == SD.TipoPagoFisico && pago.MontoRecibido.HasValue)
+                {
+                    pago.Vuelto = CalcularVuelto(pago.MontoRecibido.Value, pago.Monto);
+                }
+
+                _context.Pagos.Add(pago);
+                _context.SaveChanges();
+
+                // Actualizar estado de factura si está completamente pagada
+                var totalPagado = ObtenerPorFactura(factura.Id).Sum(p => p.Monto);
                 if (totalPagado >= factura.Monto)
                 {
                     factura.Estado = SD.EstadoFacturaPagada;
+                    _context.SaveChanges();
                 }
             }
-            _context.SaveChanges();
+
+            tx.Commit();
+            return pago;
         }
-        else
+        catch (Exception)
         {
-            // Pago de una sola factura (comportamiento original)
-            if (!pago.FacturaId.HasValue)
-                throw new Exception("Debe especificar al menos una factura");
-
-            var factura = _facturaService.ObtenerPorId(pago.FacturaId.Value);
-            if (factura == null)
-                throw new Exception("Factura no encontrada");
-
-            // Calcular vuelto si es pago físico
-            if (pago.TipoPago == SD.TipoPagoFisico && pago.MontoRecibido.HasValue)
-            {
-                pago.Vuelto = CalcularVuelto(pago.MontoRecibido.Value, pago.Monto);
-            }
-
-            _context.Pagos.Add(pago);
-            _context.SaveChanges();
-
-            // Actualizar estado de factura si está completamente pagada
-            var totalPagado = ObtenerPorFactura(factura.Id).Sum(p => p.Monto);
-            if (totalPagado >= factura.Monto)
-            {
-                factura.Estado = SD.EstadoFacturaPagada;
-                _context.SaveChanges();
-            }
+            tx.Rollback();
+            throw;
         }
-
-        return pago;
     }
 
     public Pago Actualizar(Pago pago)
