@@ -21,8 +21,7 @@ public class Servicio
     public int Stock { get; set; } = 0; // Cantidad disponible (0 = ilimitado/no controlar)
     public int StockMinimo { get; set; } = 0; // Alerta de stock bajo
     public bool ControlarStock { get; set; } = false; // Si se debe controlar el stock
-    /// <summary>Si es comida preparada en cocina: al cancelar pedido NO se devuelve stock. Si es false (bebida embotellada, etc.), sí se devuelve stock.</summary>
-    public bool EsPreparado { get; set; } = true;
+
     public string? ImagenUrl { get; set; } // URL de la imagen del producto
     public int? ProveedorId { get; set; }
     public bool Destacado { get; set; } = false; // Para mostrar en la pantalla principal

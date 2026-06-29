@@ -89,7 +89,6 @@ public class ProductosApiController : BaseApiController
                     s.Stock,
                     s.StockMinimo,
                     s.ControlarStock,
-                    s.EsPreparado,
                     s.ImagenUrl,
                     s.Destacado,
                     s.Activo,
@@ -115,7 +114,6 @@ public class ProductosApiController : BaseApiController
                     s.Stock,
                     s.StockMinimo,
                     s.ControlarStock,
-                    s.EsPreparado,
                     s.ImagenUrl,
                     s.Destacado,
                     s.Activo
@@ -162,7 +160,6 @@ public class ProductosApiController : BaseApiController
             s.Stock,
             s.StockMinimo,
             s.ControlarStock,
-            s.EsPreparado,
             s.ImagenUrl,
             s.Destacado,
             s.Activo,
@@ -195,7 +192,6 @@ public class ProductosApiController : BaseApiController
             Stock = request.Stock,
             StockMinimo = request.StockMinimo,
             ControlarStock = request.ControlarStock,
-            EsPreparado = request.EsPreparado ?? true,
             ImagenUrl = request.ImagenUrl,
             Destacado = request.Destacado,
             Activo = request.Activo,
@@ -229,7 +225,6 @@ public class ProductosApiController : BaseApiController
         producto.Stock = request.Stock;
         producto.StockMinimo = request.StockMinimo;
         producto.ControlarStock = request.ControlarStock;
-        if (request.EsPreparado.HasValue) producto.EsPreparado = request.EsPreparado.Value;
         producto.ImagenUrl = request.ImagenUrl;
         producto.Destacado = request.Destacado;
         producto.Activo = request.Activo;
@@ -263,7 +258,7 @@ public class ProductosApiController : BaseApiController
     }
 
     /// <summary>
-    /// Sube imagen de producto a Cloudflare R2. Solo aplica para productos de comida (EsPreparado=true).
+    /// Sube imagen de producto a Cloudflare R2.
     /// </summary>
     [HttpPost("{id:int}/imagen")]
     [Authorize(Policy = "Administrador")]
@@ -272,8 +267,6 @@ public class ProductosApiController : BaseApiController
     {
         var producto = _context.Servicios.FirstOrDefault(s => s.Id == id);
         if (producto == null) return FailResponse("Producto no encontrado.", StatusCodes.Status404NotFound);
-        if (!producto.EsPreparado)
-            return FailResponse("Solo se permite subir imagen para productos de comida (esPreparado=true).", StatusCodes.Status400BadRequest);
         if (archivo == null || archivo.Length <= 0)
             return FailResponse("Debe adjuntar una imagen válida.");
         if (archivo.Length > 5 * 1024 * 1024)
@@ -675,8 +668,6 @@ public class ProductoUpsertRequest
     public int Stock { get; set; }
     public int StockMinimo { get; set; }
     public bool ControlarStock { get; set; }
-    /// <summary>true = comida preparada (no devuelve stock al cancelar). false = bebida embotellada, etc. Null = mantener default (true al crear).</summary>
-    public bool? EsPreparado { get; set; }
     public string? ImagenUrl { get; set; }
     public int? ProveedorId { get; set; }
     public bool Destacado { get; set; }

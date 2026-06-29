@@ -212,29 +212,29 @@ class Program
                 }
 
                 // Asegurar productos
-                var defaultProducts = new (string Codigo, string Nombre, string Desc, decimal Precio, decimal PrecioCompra, string Cat, bool StockCtrl, bool Prep)[]
+                var defaultProducts = new (string Codigo, string Nombre, string Desc, decimal Precio, decimal PrecioCompra, string Cat, bool StockCtrl)[]
                 {
-                    ("ENT001", "Papas Fritas Suprema", "Papas fritas crujientes bañadas en queso cheddar fundido y trocitos de tocino ahumado.", 120m, 45m, "Entradas", true, true),
-                    ("ENT002", "Alitas BBQ (6 uds)", "Alitas de pollo glaseadas en salsa barbacoa de la casa, acompañadas de apio y aderezo ranch.", 180m, 70m, "Entradas", true, true),
-                    ("ENT003", "Tequeños de Queso (5 uds)", "Deditos de masa crujiente rellenos de queso blanco derretido, con aderezo tártara.", 130m, 40m, "Entradas", true, true),
+                    ("ENT001", "Papas Fritas Suprema", "Papas fritas crujientes bañadas en queso cheddar fundido y trocitos de tocino ahumado.", 120m, 45m, "Entradas", true),
+                    ("ENT002", "Alitas BBQ (6 uds)", "Alitas de pollo glaseadas en salsa barbacoa de la casa, acompañadas de apio y aderezo ranch.", 180m, 70m, "Entradas", true),
+                    ("ENT003", "Tequeños de Queso (5 uds)", "Deditos de masa crujiente rellenos de queso blanco derretido, con aderezo tártara.", 130m, 40m, "Entradas", true),
                     
-                    ("COM001", "Hamburguesa Premium", "Carne angus de 200g a la parrilla, queso cheddar, tocino crujiente, cebolla caramelizada, lechuga y tomate en pan brioche.", 220m, 95m, "Comidas", true, true),
-                    ("COM002", "Corte de Entraña 300g", "Corte premium de entraña a la parrilla con chimichurri casero y acompañamiento a elegir.", 480m, 210m, "Comidas", true, true),
-                    ("COM003", "Fettuccine Alfredo con Pollo", "Pasta fettuccine en salsa alfredo cremosa a base de mantequilla y parmesano, con pechuga de pollo grillada.", 250m, 105m, "Comidas", true, true),
-                    ("COM004", "Tacos de Pollo (3 uds)", "Tacos de tortilla de maíz con pollo desmenuzado sazonado, pico de gallo, guacamole y crema ácida.", 150m, 60m, "Comidas", true, true),
-                    ("COM005", "Club Sandwich", "Sandwich de tres pisos con jamón, queso, pollo a la plancha, tocino, huevo, lechuga, tomate y mayonesa. Con papas fritas.", 170m, 70m, "Comidas", true, true),
+                    ("COM001", "Hamburguesa Premium", "Carne angus de 200g a la parrilla, queso cheddar, tocino crujiente, cebolla caramelizada, lechuga y tomate en pan brioche.", 220m, 95m, "Comidas", true),
+                    ("COM002", "Corte de Entraña 300g", "Corte premium de entraña a la parrilla con chimichurri casero y acompañamiento a elegir.", 480m, 210m, "Comidas", true),
+                    ("COM003", "Fettuccine Alfredo con Pollo", "Pasta fettuccine en salsa alfredo cremosa a base de mantequilla y parmesano, con pechuga de pollo grillada.", 250m, 105m, "Comidas", true),
+                    ("COM004", "Tacos de Pollo (3 uds)", "Tacos de tortilla de maíz con pollo desmenuzado sazonado, pico de gallo, guacamole y crema ácida.", 150m, 60m, "Comidas", true),
+                    ("COM005", "Club Sandwich", "Sandwich de tres pisos con jamón, queso, pollo a la plancha, tocino, huevo, lechuga, tomate y mayonesa. Con papas fritas.", 170m, 70m, "Comidas", true),
                     
-                    ("BEB001", "Coca-Cola 12oz", "Gaseosa embotellada de 354ml.", 35m, 15m, "Bebidas", true, false),
-                    ("BEB002", "Jugo de Calala Natural", "Refrescante jugo natural de maracuyá de 16oz.", 45m, 12m, "Bebidas", true, true),
-                    ("BEB003", "Limonada Imperial", "Limonada frappé de 16oz con hierbabuena.", 50m, 15m, "Bebidas", true, true),
+                    ("BEB001", "Coca-Cola 12oz", "Gaseosa embotellada de 354ml.", 35m, 15m, "Bebidas", true),
+                    ("BEB002", "Jugo de Calala Natural", "Refrescante jugo natural de maracuyá de 16oz.", 45m, 12m, "Bebidas", true),
+                    ("BEB003", "Limonada Imperial", "Limonada frappé de 16oz con hierbabuena.", 50m, 15m, "Bebidas", true),
                     
-                    ("LIC001", "Cerveza Toña", "Cerveza nacional tipo lager de 12oz.", 60m, 32m, "Licores", true, false),
-                    ("LIC002", "Cerveza Victoria", "Cerveza nacional clásica de 12oz.", 60m, 32m, "Licores", true, false),
-                    ("LIC003", "Mojito Clásico", "Ron blanco, zumo de limón fresco, azúcar, hierbabuena fresca y agua mineral frappé.", 120m, 40m, "Licores", true, true),
-                    ("LIC004", "Flor de Caña 7 Años Extra Seco", "Servicio de ron Flor de Caña con Coca-Cola o agua mineral.", 140m, 50m, "Licores", true, true),
+                    ("LIC001", "Cerveza Toña", "Cerveza nacional tipo lager de 12oz.", 60m, 32m, "Licores", true),
+                    ("LIC002", "Cerveza Victoria", "Cerveza nacional clásica de 12oz.", 60m, 32m, "Licores", true),
+                    ("LIC003", "Mojito Clásico", "Ron blanco, zumo de limón fresco, azúcar, hierbabuena fresca y agua mineral frappé.", 120m, 40m, "Licores", true),
+                    ("LIC004", "Flor de Caña 7 Años Extra Seco", "Servicio de ron Flor de Caña con Coca-Cola o agua mineral.", 140m, 50m, "Licores", true),
                     
-                    ("POS001", "Torta Tres Leches", "Delicioso pastel húmedo empapado en tres tipos de leche, decorado con merengue y canela.", 90m, 30m, "Postres", true, true),
-                    ("POS002", "Brownie con Helado", "Brownie de chocolate tibio acompañado de una bola de helado de vainilla y fudge de chocolate.", 110m, 40m, "Postres", true, true)
+                    ("POS001", "Torta Tres Leches", "Delicioso pastel húmedo empapado en tres tipos de leche, decorado con merengue y canela.", 90m, 30m, "Postres", true),
+                    ("POS002", "Brownie con Helado", "Brownie de chocolate tibio acompañado de una bola de helado de vainilla y fudge de chocolate.", 110m, 40m, "Postres", true)
                 };
 
                 foreach (var p in defaultProducts)
@@ -263,15 +263,15 @@ class Program
                             currentStockCtrl = reader.GetBoolean(5);
                             
                             // Ya existe, lo guardamos
-                            products.Add(new DbProduct(prodId, p.Codigo, currentName, currentPrice, currentCost, currentCat, currentStockCtrl, p.Prep));
+                            products.Add(new DbProduct(prodId, p.Codigo, currentName, currentPrice, currentCost, currentCat, currentStockCtrl));
                             continue;
                         }
                     }
 
                     // Si no existe, lo insertamos
                     await using var cmdIns = new NpgsqlCommand(
-                        @"INSERT INTO ""Productos"" (""Codigo"", ""Nombre"", ""Descripcion"", ""Precio"", ""PrecioCompra"", ""Categoria"", ""CategoriaProductoId"", ""Stock"", ""StockMinimo"", ""ControlarStock"", ""EsPreparado"", ""ImagenUrl"", ""Destacado"", ""Activo"", ""FechaCreacion"")
-                          VALUES (@c, @n, @d, @p, @pc, @cat, @catId, 100, 10, @sc, @ep, '', true, true, CURRENT_TIMESTAMP) RETURNING ""Id"";", conn, tx);
+                        @"INSERT INTO ""Productos"" (""Codigo"", ""Nombre"", ""Descripcion"", ""Precio"", ""PrecioCompra"", ""Categoria"", ""CategoriaProductoId"", ""Stock"", ""StockMinimo"", ""ControlarStock"", ""ImagenUrl"", ""Destacado"", ""Activo"", ""FechaCreacion"")
+                          VALUES (@c, @n, @d, @p, @pc, @cat, @catId, 100, 10, @sc, '', true, true, CURRENT_TIMESTAMP) RETURNING ""Id"";", conn, tx);
                     cmdIns.Parameters.AddWithValue("c", p.Codigo);
                     cmdIns.Parameters.AddWithValue("n", p.Nombre);
                     cmdIns.Parameters.AddWithValue("d", p.Desc);
@@ -280,11 +280,10 @@ class Program
                     cmdIns.Parameters.AddWithValue("cat", p.Cat);
                     cmdIns.Parameters.AddWithValue("catId", categories[p.Cat]);
                     cmdIns.Parameters.AddWithValue("sc", p.StockCtrl);
-                    cmdIns.Parameters.AddWithValue("ep", p.Prep);
 
                     prodId = Convert.ToInt32(await cmdIns.ExecuteScalarAsync());
                     Console.WriteLine($"  · Producto creado: {p.Nombre} (Id={prodId}, Código={p.Codigo})");
-                    products.Add(new DbProduct(prodId, p.Codigo, p.Nombre, p.Precio, p.PrecioCompra, p.Cat, p.StockCtrl, p.Prep));
+                    products.Add(new DbProduct(prodId, p.Codigo, p.Nombre, p.Precio, p.PrecioCompra, p.Cat, p.StockCtrl));
                 }
 
                 // ==========================================
@@ -943,7 +942,7 @@ class Program
 }
 
 // Clases Auxiliares de Soporte para simulación
-public record DbProduct(int Id, string Codigo, string Nombre, decimal Precio, decimal PrecioCompra, string Categoria, bool ControlarStock, bool EsPreparado);
+public record DbProduct(int Id, string Codigo, string Nombre, decimal Precio, decimal PrecioCompra, string Categoria, bool ControlarStock);
 public record DbMesa(int Id, string Numero, int UbicacionId);
 public record DbOptionItem(int Id, string Name, decimal PrecioAdicional);
 

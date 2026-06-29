@@ -103,7 +103,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Stock).HasDefaultValue(0);
             entity.Property(e => e.StockMinimo).HasDefaultValue(0);
             entity.Property(e => e.ControlarStock).HasDefaultValue(false);
-            entity.Property(e => e.EsPreparado).HasDefaultValue(true);
+
             entity.Property(e => e.ImagenUrl).HasMaxLength(500);
             entity.Property(e => e.Destacado).HasDefaultValue(false);
             entity.HasIndex(e => e.Codigo).IsUnique().HasFilter("\"Codigo\" IS NOT NULL AND \"Codigo\" != ''");

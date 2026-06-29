@@ -907,6 +907,17 @@ public class PedidosApiController : BaseApiController
         _context.Facturas.Add(nuevoPedido);
         _context.SaveChanges();
 
+        if (pedidoOriginal.FacturaServicios.Count == 0)
+        {
+            pedidoOriginal.Monto = 0;
+            pedidoOriginal.Estado = SD.EstadoOrdenGuardado;
+            pedidoOriginal.EstadoCocina = SD.EstadoCocinaPendiente;
+            var mesaIdAlInicio = pedidoOriginal.MesaId;
+            pedidoOriginal.MesaId = null;
+            SincronizarEstadosMesasPorPedido(pedidoOriginal, mesaIdAlInicio);
+            _context.SaveChanges();
+        }
+
         return OkResponse(new { NuevoPedidoId = nuevoPedido.Id }, "Cuenta separada exitosamente.");
     }
 

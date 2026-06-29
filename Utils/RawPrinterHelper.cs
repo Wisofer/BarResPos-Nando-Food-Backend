@@ -46,6 +46,14 @@ public static class RawPrinterHelper
     public static bool SendBytesToPrinter(string szPrinterName, byte[] data, string docName = "TicketPOS")
     {
         if (data == null || data.Length == 0) return false;
+
+        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            // On Linux/macOS, we don't have winspool.Drv.
+            // Log/simulate printing to avoid crashes and blockages.
+            Console.WriteLine($"[RawPrinterHelper] Simulación de impresión en {szPrinterName} ({docName}): {data.Length} bytes.");
+            return true;
+        }
         
         IntPtr pUnmanagedBytes = Marshal.AllocCoTaskMem(data.Length);
         Marshal.Copy(data, 0, pUnmanagedBytes, data.Length);

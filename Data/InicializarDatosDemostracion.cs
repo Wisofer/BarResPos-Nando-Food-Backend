@@ -103,43 +103,43 @@ public static class InicializarDatosDemostracion
                 var productos = new List<Servicio>
                 {
                     // Hamburguesas
-                    new Servicio { Codigo = "HMB01", Nombre = "Hamburguesa de Res", Precio = 200, Categoria = "Comidas", CategoriaProductoId = catHamburguesas?.Id, EsPreparado = true },
-                    new Servicio { Codigo = "HMB02", Nombre = "Hamburguesa de Pollo", Precio = 190, Categoria = "Comidas", CategoriaProductoId = catHamburguesas?.Id, EsPreparado = true },
-                    new Servicio { Codigo = "HMB03", Nombre = "Nando Hamburguesa", Precio = 260, Categoria = "Comidas", CategoriaProductoId = catHamburguesas?.Id, EsPreparado = true },
+                    new Servicio { Codigo = "HMB01", Nombre = "Hamburguesa de Res", Precio = 200, Categoria = "Comidas", CategoriaProductoId = catHamburguesas?.Id },
+                    new Servicio { Codigo = "HMB02", Nombre = "Hamburguesa de Pollo", Precio = 190, Categoria = "Comidas", CategoriaProductoId = catHamburguesas?.Id },
+                    new Servicio { Codigo = "HMB03", Nombre = "Nando Hamburguesa", Precio = 260, Categoria = "Comidas", CategoriaProductoId = catHamburguesas?.Id },
 
                     // Alitas (Base)
-                    new Servicio { Codigo = "ALI01", Nombre = "Alitas", Precio = 250, Categoria = "Comidas", CategoriaProductoId = catAlitas?.Id, EsPreparado = true },
+                    new Servicio { Codigo = "ALI01", Nombre = "Alitas", Precio = 250, Categoria = "Comidas", CategoriaProductoId = catAlitas?.Id },
 
                     // Tacos
-                    new Servicio { Codigo = "TAC01", Nombre = "Taco al Pastor", Precio = 170, Categoria = "Comidas", CategoriaProductoId = catTacos?.Id, EsPreparado = true },
-                    new Servicio { Codigo = "TAC02", Nombre = "Taco de Birria", Precio = 230, Categoria = "Comidas", CategoriaProductoId = catTacos?.Id, EsPreparado = true },
+                    new Servicio { Codigo = "TAC01", Nombre = "Taco al Pastor", Precio = 170, Categoria = "Comidas", CategoriaProductoId = catTacos?.Id },
+                    new Servicio { Codigo = "TAC02", Nombre = "Taco de Birria", Precio = 230, Categoria = "Comidas", CategoriaProductoId = catTacos?.Id },
 
                     // Quesadillas
-                    new Servicio { Codigo = "QUE01", Nombre = "Quesadilla", Precio = 140, Categoria = "Comidas", CategoriaProductoId = catQuesadillas?.Id, EsPreparado = true },
-                    new Servicio { Codigo = "QUE02", Nombre = "Quesabirria", Precio = 220, Categoria = "Comidas", CategoriaProductoId = catQuesadillas?.Id, EsPreparado = true },
+                    new Servicio { Codigo = "QUE01", Nombre = "Quesadilla", Precio = 140, Categoria = "Comidas", CategoriaProductoId = catQuesadillas?.Id },
+                    new Servicio { Codigo = "QUE02", Nombre = "Quesabirria", Precio = 220, Categoria = "Comidas", CategoriaProductoId = catQuesadillas?.Id },
 
                     // Subway
-                    new Servicio { Codigo = "SUB01", Nombre = "Subway de Res", Precio = 200, Categoria = "Comidas", CategoriaProductoId = catSubway?.Id, EsPreparado = true },
-                    new Servicio { Codigo = "SUB02", Nombre = "Subway de Pollo", Precio = 170, Categoria = "Comidas", CategoriaProductoId = catSubway?.Id, EsPreparado = true },
+                    new Servicio { Codigo = "SUB01", Nombre = "Subway de Res", Precio = 200, Categoria = "Comidas", CategoriaProductoId = catSubway?.Id },
+                    new Servicio { Codigo = "SUB02", Nombre = "Subway de Pollo", Precio = 170, Categoria = "Comidas", CategoriaProductoId = catSubway?.Id },
 
                     // Nachos
-                    new Servicio { Codigo = "NAC01", Nombre = "Nachos de Pollo", Precio = 220, Categoria = "Comidas", CategoriaProductoId = catNachos?.Id, EsPreparado = true },
-                    new Servicio { Codigo = "NAC02", Nombre = "Nachos de Res", Precio = 220, Categoria = "Comidas", CategoriaProductoId = catNachos?.Id, EsPreparado = true },
-                    new Servicio { Codigo = "NAC03", Nombre = "Nachos Mixto", Precio = 240, Categoria = "Comidas", CategoriaProductoId = catNachos?.Id, EsPreparado = true },
+                    new Servicio { Codigo = "NAC01", Nombre = "Nachos de Pollo", Precio = 220, Categoria = "Comidas", CategoriaProductoId = catNachos?.Id },
+                    new Servicio { Codigo = "NAC02", Nombre = "Nachos de Res", Precio = 220, Categoria = "Comidas", CategoriaProductoId = catNachos?.Id },
+                    new Servicio { Codigo = "NAC03", Nombre = "Nachos Mixto", Precio = 240, Categoria = "Comidas", CategoriaProductoId = catNachos?.Id },
 
                     // De todo un poco
-                    new Servicio { Codigo = "VAR01", Nombre = "Salchipapa de Pollo o Res", Precio = 190, Categoria = "Comidas", CategoriaProductoId = catDeTodo?.Id, EsPreparado = true },
-                    new Servicio { Codigo = "VAR02", Nombre = "Deditos de Pollo", Precio = 180, Categoria = "Comidas", CategoriaProductoId = catDeTodo?.Id, EsPreparado = true },
-                    new Servicio { Codigo = "VAR03", Nombre = "Palomitas de Pollo", Precio = 150, Categoria = "Comidas", CategoriaProductoId = catDeTodo?.Id, EsPreparado = true },
-                    new Servicio { Codigo = "VAR04", Nombre = "Burritos", Precio = 180, Categoria = "Comidas", CategoriaProductoId = catDeTodo?.Id, EsPreparado = true },
+                    new Servicio { Codigo = "VAR01", Nombre = "Salchipapa de Pollo o Res", Precio = 190, Categoria = "Comidas", CategoriaProductoId = catDeTodo?.Id },
+                    new Servicio { Codigo = "VAR02", Nombre = "Deditos de Pollo", Precio = 180, Categoria = "Comidas", CategoriaProductoId = catDeTodo?.Id },
+                    new Servicio { Codigo = "VAR03", Nombre = "Palomitas de Pollo", Precio = 150, Categoria = "Comidas", CategoriaProductoId = catDeTodo?.Id },
+                    new Servicio { Codigo = "VAR04", Nombre = "Burritos", Precio = 180, Categoria = "Comidas", CategoriaProductoId = catDeTodo?.Id },
 
                     // Extras
-                    new Servicio { Codigo = "EXT01", Nombre = "Papas", Precio = 70, Categoria = "Comidas", CategoriaProductoId = catExtras?.Id, EsPreparado = true },
-                    new Servicio { Codigo = "EXT02", Nombre = "Papas Gajo", Precio = 90, Categoria = "Comidas", CategoriaProductoId = catExtras?.Id, EsPreparado = true },
-                    new Servicio { Codigo = "EXT03", Nombre = "Queso Cheddar", Precio = 50, Categoria = "Comidas", CategoriaProductoId = catExtras?.Id, EsPreparado = true },
+                    new Servicio { Codigo = "EXT01", Nombre = "Papas", Precio = 70, Categoria = "Comidas", CategoriaProductoId = catExtras?.Id },
+                    new Servicio { Codigo = "EXT02", Nombre = "Papas Gajo", Precio = 90, Categoria = "Comidas", CategoriaProductoId = catExtras?.Id },
+                    new Servicio { Codigo = "EXT03", Nombre = "Queso Cheddar", Precio = 50, Categoria = "Comidas", CategoriaProductoId = catExtras?.Id },
 
                     // Bebidas
-                    new Servicio { Codigo = "BEB01", Nombre = "Batidos", Precio = 100, Categoria = "Bebidas", CategoriaProductoId = catBebidas?.Id, EsPreparado = false }
+                    new Servicio { Codigo = "BEB01", Nombre = "Batidos", Precio = 100, Categoria = "Bebidas", CategoriaProductoId = catBebidas?.Id }
                 };
 
                 context.Servicios.AddRange(productos);

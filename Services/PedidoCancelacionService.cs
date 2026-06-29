@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace BarRestPOS.Services;
 
 /// <summary>
-/// Cancelación de pedidos con devolución selectiva de inventario (solo productos con EsPreparado = false y ControlarStock).
+/// Cancelación de pedidos con devolución selectiva de inventario (solo productos con ControlarStock).
 /// El PIN se valida en el controlador antes de llamar a <see cref="EjecutarCancelacion"/>.
 /// </summary>
 public class PedidoCancelacionService
@@ -42,8 +42,6 @@ public class PedidoCancelacionService
         {
             var svc = linea.Servicio;
             if (svc == null)
-                continue;
-            if (svc.EsPreparado)
                 continue;
             if (!svc.ControlarStock)
                 continue;
