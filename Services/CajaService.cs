@@ -175,6 +175,13 @@ public class CajaService : ICajaService
 
         var preview = await ObtenerPreviewCierreAsync();
 
+        var pendientesCount = await _context.Facturas
+            .CountAsync(f => f.Estado != SD.EstadoOrdenPagado && f.Estado != SD.EstadoOrdenCancelado);
+        if (pendientesCount > 0)
+            throw new Exception(
+                $"No se puede cerrar la caja porque hay {pendientesCount} orden(es) pendiente(s) de pago. " +
+                "Debe procesar o cancelar todas las órdenes antes de cerrar.");
+
         cierre.TotalEfectivo = preview.TotalEfectivo;
         cierre.TotalTarjeta = preview.TotalTarjeta;
         cierre.TotalTransferencia = preview.TotalTransferencia;

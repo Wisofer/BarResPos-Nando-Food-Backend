@@ -3,6 +3,7 @@ using BarRestPOS.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BarRestPOS.Controllers.Api.V1;
 
@@ -11,10 +12,12 @@ namespace BarRestPOS.Controllers.Api.V1;
 public class CocinaApiController : BaseApiController
 {
     private readonly ApplicationDbContext _context;
+    private readonly ILogger<CocinaApiController> _logger;
 
-    public CocinaApiController(ApplicationDbContext context)
+    public CocinaApiController(ApplicationDbContext context, ILogger<CocinaApiController> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     [HttpGet("ordenes")]
@@ -166,9 +169,104 @@ public class CocinaApiController : BaseApiController
 
         return OkResponse(new { item.Id, item.Estado }, "Estado del item y de la orden actualizados");
     }
+
+    [HttpPatch("items/estado")]
+    [Authorize(Policy = "Cocina")]
+    public IActionResult CambiarEstadoItemsBatch([FromBody] CambiarEstadoItemsBatchRequest request)
+    {
+        if (request.Items == null || request.Items.Count == 0)
+            return FailResponse("Debe incluir al menos un item.");
+
+        var items = _context.FacturaServicios
+            .Include(i => i.Servicio).ThenInclude(s => s.CategoriaProducto)
+            .Include(i => i.Factura).ThenInclude(f => f.FacturaServicios).ThenInclude(fs => fs.Servicio).ThenInclude(s => s.CategoriaProducto)
+            .Where(i => request.Items.Select(r => r.Id).Contains(i.Id))
+            .ToList();
+
+        if (items.Count != request.Items.Count)
+            return FailResponse("Uno o más items no fueron encontrados.", StatusCodes.Status404NotFound);
+
+        var ordenes = items.GroupBy(i => i.Factura).ToList();
+        var estadoMap = request.Items.ToDictionary(r => r.Id, r => r.Estado.Trim());
+
+        using var tx = _context.Database.BeginTransaction();
+        try
+        {
+            foreach (var grupo in ordenes)
+            {
+                var orden = grupo.Key;
+                if (orden.Estado == SD.EstadoOrdenPagado || orden.Estado == SD.EstadoOrdenCancelado)
+                {
+                    tx.Rollback();
+                    return FailResponse($"No se puede cambiar estado de cocina de la orden {orden.Numero}: está pagada o cancelada.", StatusCodes.Status409Conflict);
+                }
+            }
+
+            foreach (var item in items)
+            {
+                if (!CocinaCatalogoHelper.FacturaServicioRequiereCocina(item) && !CocinaCatalogoHelper.FacturaServicioRequiereBar(item))
+                {
+                    tx.Rollback();
+                    return FailResponse($"El item {item.Id} no participa en cocina/bar.", StatusCodes.Status409Conflict);
+                }
+                item.Estado = estadoMap[item.Id];
+            }
+
+            foreach (var grupo in ordenes)
+            {
+                var orden = grupo.Key;
+                var lineasCocinaBar = orden.FacturaServicios
+                    .Where(l => CocinaCatalogoHelper.FacturaServicioRequiereCocina(l) || CocinaCatalogoHelper.FacturaServicioRequiereBar(l))
+                    .ToList();
+
+                if (lineasCocinaBar.Any())
+                {
+                    if (lineasCocinaBar.All(l => l.Estado == SD.EstadoCocinaEntregado))
+                    {
+                        orden.EstadoCocina = SD.EstadoCocinaEntregado;
+                    }
+                    else if (lineasCocinaBar.All(l => l.Estado == SD.EstadoCocinaListo || l.Estado == SD.EstadoCocinaEntregado))
+                    {
+                        orden.EstadoCocina = SD.EstadoCocinaListo;
+                        orden.FechaListo = DateTime.Now;
+                    }
+                    else if (lineasCocinaBar.All(l => l.Estado == SD.EstadoCocinaPendiente))
+                    {
+                        orden.EstadoCocina = SD.EstadoCocinaPendiente;
+                    }
+                    else
+                    {
+                        orden.EstadoCocina = SD.EstadoCocinaEnPreparacion;
+                    }
+                }
+            }
+
+            _context.SaveChanges();
+            tx.Commit();
+        }
+        catch (Exception ex)
+        {
+            tx.Rollback();
+            _logger.LogError(ex, "Error al actualizar estado de items batch");
+            return FailResponse("Error al actualizar los estados. Reintente.", StatusCodes.Status500InternalServerError);
+        }
+
+        return OkResponse(new { actualizados = items.Count }, "Estados de cocina actualizados");
+    }
 }
 
 public class CambiarEstadoCocinaRequest
 {
+    public string Estado { get; set; } = string.Empty;
+}
+
+public class CambiarEstadoItemsBatchRequest
+{
+    public List<CambiarEstadoItemRequest> Items { get; set; } = new();
+}
+
+public class CambiarEstadoItemRequest
+{
+    public int Id { get; set; }
     public string Estado { get; set; } = string.Empty;
 }

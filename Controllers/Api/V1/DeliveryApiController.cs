@@ -356,7 +356,15 @@ public class DeliveryApiController : BaseApiController
             }
         }
 
-        _context.SaveChanges();
+        try
+        {
+            _context.SaveChanges();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return FailResponse("El pedido fue modificado por otro usuario. Recargue e intente de nuevo.",
+                StatusCodes.Status409Conflict);
+        }
 
         var urlsNuevas = new Dictionary<string, string>();
 
@@ -648,6 +656,24 @@ public class DeliveryApiController : BaseApiController
         if (!pedido.FacturaServicios.Any())
             return FailResponse("No se puede procesar/cobrar un pedido sin items.", StatusCodes.Status400BadRequest);
 
+        // Idempotency check: if the same IdempotencyKey was already processed, return the existing payment
+        if (!string.IsNullOrWhiteSpace(request.IdempotencyKey))
+        {
+            var existingPago = _context.Pagos
+                .AsNoTracking()
+                .FirstOrDefault(p => p.IdempotencyKey == request.IdempotencyKey.Trim());
+            if (existingPago != null)
+            {
+                return OkResponse(new
+                {
+                    pagoId = existingPago.Id,
+                    pedidoId = pedido.Id,
+                    yaProcesado = true,
+                    message = "Este pago ya fue procesado anteriormente."
+                }, "Pago ya procesado");
+            }
+        }
+
         var subtotalPedido = Math.Round(pedido.Monto, 2, MidpointRounding.AwayFromZero);
         if (subtotalPedido <= 0)
             return FailResponse("No se puede procesar/cobrar un pedido con total menor o igual a 0.", StatusCodes.Status400BadRequest);
@@ -686,6 +712,7 @@ public class DeliveryApiController : BaseApiController
         var pago = new Pago
         {
             FacturaId = pedido.Id,
+            IdempotencyKey = string.IsNullOrWhiteSpace(request.IdempotencyKey) ? null : request.IdempotencyKey.Trim(),
             Monto = totalNetoCordobas,
             DescuentoMonto = descuento,
             DescuentoMotivo = string.IsNullOrWhiteSpace(request.DescuentoMotivo) ? null : request.DescuentoMotivo.Trim(),

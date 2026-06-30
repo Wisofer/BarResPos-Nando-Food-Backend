@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using BarRestPOS.Utils;
 
@@ -46,6 +47,10 @@ public class Factura
     
     // Observaciones
     public string? Observaciones { get; set; } // Notas especiales de la orden
+
+    // Concurrency token for lost-update prevention
+    [Timestamp]
+    public byte[] RowVersion { get; set; } = [];
     
     // Relaciones
     public virtual Mesa? Mesa { get; set; }

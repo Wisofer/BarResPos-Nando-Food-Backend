@@ -33,6 +33,9 @@ public class Pago
 
     /// <summary>Motivo o nota del descuento (auditoría).</summary>
     public string? DescuentoMotivo { get; set; }
+
+    /// <summary>Idempotency key to prevent duplicate payment processing on retry.</summary>
+    public string? IdempotencyKey { get; set; }
     
     // Relaciones
     public virtual Factura Factura { get; set; } = null!; // Para compatibilidad con pagos de una sola factura

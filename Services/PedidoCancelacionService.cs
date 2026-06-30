@@ -3,6 +3,7 @@ using BarRestPOS.Models.Entities;
 using BarRestPOS.Services.IServices;
 using BarRestPOS.Utils;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace BarRestPOS.Services;
 
@@ -61,7 +62,14 @@ public class PedidoCancelacionService
 
         LiberarMesaSiAplica(pedido);
 
-        _context.SaveChanges();
+        try
+        {
+            _context.SaveChanges();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return "El pedido fue modificado por otro usuario. Recargue e intente de nuevo.";
+        }
         return null;
     }
 

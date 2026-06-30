@@ -64,6 +64,24 @@ public class VentasApiController : BaseApiController
         if (!orden.FacturaServicios.Any())
             return FailResponse("No se puede procesar/cobrar un pedido sin items.", StatusCodes.Status400BadRequest);
 
+        // Idempotency check: if the same IdempotencyKey was already processed, return the existing payment
+        if (!string.IsNullOrWhiteSpace(request.IdempotencyKey))
+        {
+            var existingPago = _context.Pagos
+                .AsNoTracking()
+                .FirstOrDefault(p => p.IdempotencyKey == request.IdempotencyKey.Trim());
+            if (existingPago != null)
+            {
+                return OkResponse(new
+                {
+                    pagoId = existingPago.Id,
+                    ordenId = request.OrdenId,
+                    yaProcesado = true,
+                    message = "Este pago ya fue procesado anteriormente."
+                }, "Pago ya procesado");
+            }
+        }
+
         var subtotalPedido = Math.Round(orden.Monto, 2, MidpointRounding.AwayFromZero);
         if (subtotalPedido <= 0)
             return FailResponse("No se puede procesar/cobrar un pedido con total menor o igual a 0.", StatusCodes.Status400BadRequest);
@@ -102,6 +120,7 @@ public class VentasApiController : BaseApiController
         var pago = new Pago
         {
             FacturaId = orden.Id,
+            IdempotencyKey = string.IsNullOrWhiteSpace(request.IdempotencyKey) ? null : request.IdempotencyKey.Trim(),
             Monto = totalNetoCordobas,
             DescuentoMonto = descuento,
             DescuentoMotivo = string.IsNullOrWhiteSpace(request.DescuentoMotivo) ? null : request.DescuentoMotivo.Trim(),
@@ -200,6 +219,9 @@ public class ProcesarPagoVentaRequest
     public string? Banco { get; set; }
     public string? TipoCuenta { get; set; }
     public string? Observaciones { get; set; }
+
+    /// <summary>Idempotency key to prevent duplicate payment processing.</summary>
+    public string? IdempotencyKey { get; set; }
 
     /// <summary>Descuento en córdobas aplicado solo al cobro (≥ 0). El total a pagar es subtotal pedido − descuento.</summary>
     public decimal? DescuentoMonto { get; set; }

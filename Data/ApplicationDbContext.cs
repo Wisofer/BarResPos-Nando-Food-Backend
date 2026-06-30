@@ -230,6 +230,8 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Observaciones).HasMaxLength(500);
             entity.Property(e => e.DescuentoMonto).HasColumnType("decimal(18,2)").HasDefaultValue(0m);
             entity.Property(e => e.DescuentoMotivo).HasMaxLength(500);
+            entity.Property(e => e.IdempotencyKey).HasMaxLength(100);
+            entity.HasIndex(e => e.IdempotencyKey).IsUnique().HasFilter("\"IdempotencyKey\" IS NOT NULL");
             
             // Campos para pago físico con múltiples monedas
             entity.Property(e => e.MontoCordobasFisico).HasColumnType("decimal(18,2)");

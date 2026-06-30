@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
+// ReSharper disable PossibleNullReferenceException
+
 namespace BarRestPOS.Controllers.Api.V1;
 
 [Authorize]
@@ -541,7 +543,15 @@ public class PedidosApiController : BaseApiController
 
         SincronizarEstadosMesasPorPedido(pedido, pedido.MesaId);
 
-        _context.SaveChanges();
+        try
+        {
+            _context.SaveChanges();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return FailResponse("El pedido fue modificado por otro usuario. Recargue e intente de nuevo.",
+                StatusCodes.Status409Conflict);
+        }
 
         var urlsNuevas = new Dictionary<string, string>();
         
@@ -631,7 +641,15 @@ public class PedidosApiController : BaseApiController
 
             SincronizarEstadosMesasPorPedido(pedido, mesaIdAlInicio);
 
-            _context.SaveChanges();
+            try
+            {
+                _context.SaveChanges();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return FailResponse("El pedido fue modificado por otro usuario. Recargue e intente de nuevo.",
+                    StatusCodes.Status409Conflict);
+            }
 
             return OkResponse(new { pedido.Id, pedido.Monto, pedido.Estado }, "Pedido actualizado");
         }
@@ -650,7 +668,15 @@ public class PedidosApiController : BaseApiController
 
         SincronizarEstadosMesasPorPedido(pedido, mesaIdAlInicio);
 
-        _context.SaveChanges();
+        try
+        {
+            _context.SaveChanges();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return FailResponse("El pedido fue modificado por otro usuario. Recargue e intente de nuevo.",
+                StatusCodes.Status409Conflict);
+        }
         return OkResponse(new { pedido.Id, pedido.Monto, pedido.Estado }, "Pedido actualizado");
     }
 
@@ -905,7 +931,15 @@ public class PedidosApiController : BaseApiController
         pedidoOriginal.FechaActualizacion = DateTime.Now;
 
         _context.Facturas.Add(nuevoPedido);
-        _context.SaveChanges();
+        try
+        {
+            _context.SaveChanges();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return FailResponse("El pedido fue modificado por otro usuario. Recargue e intente de nuevo.",
+                StatusCodes.Status409Conflict);
+        }
 
         if (pedidoOriginal.FacturaServicios.Count == 0)
         {
@@ -915,7 +949,15 @@ public class PedidosApiController : BaseApiController
             var mesaIdAlInicio = pedidoOriginal.MesaId;
             pedidoOriginal.MesaId = null;
             SincronizarEstadosMesasPorPedido(pedidoOriginal, mesaIdAlInicio);
-            _context.SaveChanges();
+            try
+            {
+                _context.SaveChanges();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return FailResponse("El pedido fue modificado por otro usuario. Recargue e intente de nuevo.",
+                    StatusCodes.Status409Conflict);
+            }
         }
 
         return OkResponse(new { NuevoPedidoId = nuevoPedido.Id }, "Cuenta separada exitosamente.");
