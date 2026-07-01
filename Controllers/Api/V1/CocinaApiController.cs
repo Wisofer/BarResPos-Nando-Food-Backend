@@ -32,7 +32,7 @@ public class CocinaApiController : BaseApiController
             .Where(f => 
                 (f.Estado != SD.EstadoOrdenPagado && f.Estado != SD.EstadoOrdenCancelado && f.Estado != SD.EstadoOrdenPendiente && f.Estado != SD.EstadoOrdenGuardado)
                 || 
-                ((f.Estado == SD.EstadoOrdenPagado || f.Estado == SD.EstadoOrdenCancelado) && f.FechaCreacion >= DateTime.Now.AddHours(-24))
+                ((f.Estado == SD.EstadoOrdenPagado || f.Estado == SD.EstadoOrdenCancelado) && f.EstadoCocina != SD.EstadoCocinaPendiente && f.FechaCreacion >= DateTime.Now.AddHours(-24))
             )
             .Where(f => f.FacturaServicios.Any(i =>
                 i.Servicio != null && (i.Servicio.CategoriaProducto == null || i.Servicio.CategoriaProducto.RequiereCocina)));
