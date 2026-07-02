@@ -131,7 +131,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ArchivoPDF).HasMaxLength(500);
             entity.Property(e => e.Observaciones).HasMaxLength(1000);
             entity.Property(e => e.TiempoPreparacion).HasDefaultValue(0);
-            entity.Property(e => e.FechaActualizacion).IsConcurrencyToken();
+            entity.Property(e => e.FechaActualizacion);
             
             entity.HasOne(e => e.Mesa)
                 .WithMany(m => m.Ordenes)
@@ -470,10 +470,10 @@ public class ApplicationDbContext : DbContext
         return base.SaveChanges();
     }
 
-    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         UpdateAuditProperties();
-        return base.SaveChangesAsync(cancellationToken);
+        return await base.SaveChangesAsync(cancellationToken);
     }
 
     private void UpdateAuditProperties()

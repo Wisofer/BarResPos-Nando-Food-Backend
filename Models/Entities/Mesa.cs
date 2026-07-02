@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BarRestPOS.Models.Entities;
@@ -15,6 +16,9 @@ public class Mesa
     public int? UbicacionId { get; set; } // Salón, Terraza, VIP, Bar
     public bool Activo { get; set; } = true;
     public DateTime FechaCreacion { get; set; } = DateTime.Now;
+
+    [Timestamp]
+    public byte[] RowVersion { get; set; } = [];
     
     // Relaciones
     public virtual Ubicacion? Ubicacion { get; set; }

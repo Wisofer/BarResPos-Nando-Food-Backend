@@ -97,8 +97,6 @@ public class MesaService : IMesaService
                 // Si la mesa está desactivada, eliminarla físicamente para permitir reutilizar el número
                 Console.WriteLine($"[MesaService] Mesa desactivada encontrada con número '{mesa.Numero}', eliminándola físicamente...");
                 _context.Mesas.Remove(mesaExistente);
-                _context.SaveChanges();
-                Console.WriteLine($"[MesaService] Mesa desactivada eliminada, continuando con la creación...");
             }
         }
 
@@ -118,12 +116,14 @@ public class MesaService : IMesaService
 
         Console.WriteLine($"[MesaService] Agregando mesa a contexto...");
         Console.WriteLine($"[MesaService] Mesa antes de agregar - Numero: {mesa.Numero}, Capacidad: {mesa.Capacidad}, UbicacionId: {mesa.UbicacionId}, Estado: {mesa.Estado}, Activo: {mesa.Activo}");
-        
+
+        using var tx = _context.Database.BeginTransaction();
         try
         {
             _context.Mesas.Add(mesa);
             Console.WriteLine($"[MesaService] Guardando cambios...");
             _context.SaveChanges();
+            tx.Commit();
             Console.WriteLine($"[MesaService] Mesa creada exitosamente con ID: {mesa.Id}");
             return mesa;
         }

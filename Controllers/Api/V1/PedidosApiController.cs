@@ -703,12 +703,16 @@ public class PedidosApiController : BaseApiController
 
         var mesaIdAlInicio = pedido.MesaId;
         var refPedido = string.IsNullOrWhiteSpace(pedido.Numero) ? $"#{pedido.Id}" : pedido.Numero;
+        using var tx = _context.Database.BeginTransaction();
         var (vacio, err) = _lineasService.EliminarLinea(_context, _inventarioService, pedido, lineaId, userId.Value, refPedido);
         if (err != null)
+        {
             return FailResponse(err, StatusCodes.Status400BadRequest);
+        }
 
         SincronizarEstadosMesasPorPedido(pedido, mesaIdAlInicio);
         _context.SaveChanges();
+        tx.Commit();
 
         return OkResponse(new
         {
@@ -960,33 +964,28 @@ public class PedidosApiController : BaseApiController
         pedidoOriginal.FechaActualizacion = DateTime.Now;
 
         _context.Facturas.Add(nuevoPedido);
+        using var tx = _context.Database.BeginTransaction();
         try
         {
             _context.SaveChanges();
+
+            if (pedidoOriginal.FacturaServicios.Count == 0)
+            {
+                pedidoOriginal.Monto = 0;
+                pedidoOriginal.Estado = SD.EstadoOrdenGuardado;
+                pedidoOriginal.EstadoCocina = SD.EstadoCocinaPendiente;
+                var mesaIdAlInicio = pedidoOriginal.MesaId;
+                pedidoOriginal.MesaId = null;
+                SincronizarEstadosMesasPorPedido(pedidoOriginal, mesaIdAlInicio);
+                _context.SaveChanges();
+            }
+
+            tx.Commit();
         }
         catch (DbUpdateConcurrencyException)
         {
             return FailResponse("El pedido fue modificado por otro usuario. Recargue e intente de nuevo.",
                 StatusCodes.Status409Conflict);
-        }
-
-        if (pedidoOriginal.FacturaServicios.Count == 0)
-        {
-            pedidoOriginal.Monto = 0;
-            pedidoOriginal.Estado = SD.EstadoOrdenGuardado;
-            pedidoOriginal.EstadoCocina = SD.EstadoCocinaPendiente;
-            var mesaIdAlInicio = pedidoOriginal.MesaId;
-            pedidoOriginal.MesaId = null;
-            SincronizarEstadosMesasPorPedido(pedidoOriginal, mesaIdAlInicio);
-            try
-            {
-                _context.SaveChanges();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                return FailResponse("El pedido fue modificado por otro usuario. Recargue e intente de nuevo.",
-                    StatusCodes.Status409Conflict);
-            }
         }
 
         var mesaStr = pedidoOriginal.MesaId.HasValue ? _context.Mesas.Find(pedidoOriginal.MesaId.Value)?.Numero : (!string.IsNullOrEmpty(pedidoOriginal.OrigenPedido) && pedidoOriginal.OrigenPedido.ToLower() != "salon" ? pedidoOriginal.OrigenPedido : "S/M");

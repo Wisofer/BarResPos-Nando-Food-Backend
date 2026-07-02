@@ -171,11 +171,15 @@ public class DeliveryApiController : BaseApiController
             return FailResponse("Usuario no autenticado.", StatusCodes.Status401Unauthorized);
 
         var refPedido = string.IsNullOrWhiteSpace(pedido.Numero) ? $"#{pedido.Id}" : pedido.Numero;
+        using var tx = _context.Database.BeginTransaction();
         var (vacio, err) = _lineasService.EliminarLinea(_context, _inventarioService, pedido, lineaId, userId.Value, refPedido);
         if (err != null)
+        {
             return FailResponse(err, StatusCodes.Status400BadRequest);
+        }
 
         _context.SaveChanges();
+        tx.Commit();
 
         return OkResponse(new
         {

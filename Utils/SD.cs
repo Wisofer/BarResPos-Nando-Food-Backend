@@ -179,33 +179,5 @@ public static class SD
         public const decimal PrecioPlatoDelDia = 200m; // C$200
     }
 
-    // Usuarios estáticos (temporal, hasta conectar BD)
-    public static class UsuariosEstaticos
-    {
-        public static List<Models.Entities.Usuario> ObtenerUsuarios()
-        {
-            return new List<Models.Entities.Usuario>
-            {
-                new Models.Entities.Usuario
-                {
-                    Id = 1,
-                    NombreUsuario = "admin",
-                    Contrasena = "admin", // En producción debe estar hasheada
-                    Rol = RolAdministrador,
-                    NombreCompleto = "Administrador del Sistema",
-                    Activo = true
-                },
-                new Models.Entities.Usuario
-                {
-                    Id = 2,
-                    NombreUsuario = "usuario",
-                    Contrasena = "usuario",
-                    Rol = RolNormal,
-                    NombreCompleto = "Usuario Normal",
-                    Activo = true
-                }
-            };
-        }
-    }
 }
 

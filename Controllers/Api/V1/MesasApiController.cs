@@ -172,11 +172,14 @@ public class MesasApiController : BaseApiController
             {
                 fs.Id,
                 fs.ServicioId,
-                Nombre = fs.Servicio != null ? fs.Servicio.Nombre : "Producto eliminado",
+                Servicio = fs.Servicio != null ? fs.Servicio.Nombre : "Producto eliminado",
                 fs.Cantidad,
+                fs.PrecioUnitario,
                 fs.Monto,
                 fs.Estado,
-                Opciones = fs.OpcionesSeleccionadas.Select(o => new { o.Id, o.ProductoOpcionItemId, o.NombreOpcion, o.PrecioAdicional })
+                fs.Notas,
+                opcionesResumen = ProductoOpcionesLineaHelper.OpcionesResumen(fs.OpcionesSeleccionadas),
+                opcionesSeleccionadas = ProductoOpcionesLineaHelper.MapOpcionesLineaRespuesta(fs.OpcionesSeleccionadas)
             })
         }));
     }

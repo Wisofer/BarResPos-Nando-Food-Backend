@@ -93,7 +93,14 @@ public class InventarioService : IInventarioService
         }
 
         _context.MovimientosInventario.Add(movimiento);
-        _context.SaveChanges();
+        try
+        {
+            _context.SaveChanges();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new Exception("El inventario fue modificado por otro usuario. Recargue e intente de nuevo.");
+        }
 
         // Registrar acción en la bitácora de auditoría
         try
@@ -181,7 +188,14 @@ public class InventarioService : IInventarioService
         }
 
         _context.MovimientosInventario.Add(movimiento);
-        _context.SaveChanges();
+        try
+        {
+            _context.SaveChanges();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new Exception("El inventario fue modificado por otro usuario. Recargue e intente de nuevo.");
+        }
 
         // Registrar acción en la bitácora de auditoría si no es venta
         if (subtipo != SD.SubtipoMovimientoVenta)
@@ -231,7 +245,14 @@ public class InventarioService : IInventarioService
         producto.Stock = cantidadNueva;
 
         _context.MovimientosInventario.Add(movimiento);
-        _context.SaveChanges();
+        try
+        {
+            _context.SaveChanges();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new Exception("El inventario fue modificado por otro usuario. Recargue e intente de nuevo.");
+        }
 
         // Registrar acción en la bitácora de auditoría
         try

@@ -10,6 +10,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql.EntityFrameworkCore.PostgreSQL;
 using QuestPDF.Infrastructure;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 
 // Inicializar QuestPDF antes de cualquier uso
@@ -48,27 +50,49 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
 });
 
-// Configurar CORS para frontend React (Vite/local y orígenes configurados)
-var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
-if (corsOrigins == null || corsOrigins.Length == 0)
-{
-    corsOrigins = new[]
-    {
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "https://localhost:5173",
-        "https://127.0.0.1:5173"
-    };
-}
+// Configurar CORS para frontend (Vite, tablets WiFi, dominio producción)
+var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendCors", policy =>
     {
-        policy.SetIsOriginAllowed(origin => true)
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials();
+        policy.SetIsOriginAllowed(origin =>
+        {
+            if (string.IsNullOrEmpty(origin))
+                return false;
+
+            var uri = new Uri(origin);
+
+            // 1. Permitir orígenes configurados explícitamente (localhost, dominio producción)
+            if (corsOrigins.Length > 0 && corsOrigins.Any(o =>
+                string.Equals(o, origin, StringComparison.OrdinalIgnoreCase)))
+                return true;
+
+            // 2. Permitir localhost / 127.0.0.1 en cualquier puerto
+            if (uri.Host == "localhost" || uri.Host == "127.0.0.1")
+                return true;
+
+            // 3. Permitir IPs privadas LAN (tablets WiFi: 192.168.x.x, 10.x.x.x, 172.16-31.x.x)
+            if (IPAddress.TryParse(uri.Host, out var addr))
+            {
+                byte[] bytes = addr.GetAddressBytes();
+                if (addr.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                {
+                    // 10.0.0.0/8
+                    if (bytes[0] == 10) return true;
+                    // 172.16.0.0/12
+                    if (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) return true;
+                    // 192.168.0.0/16
+                    if (bytes[0] == 192 && bytes[1] == 168) return true;
+                }
+            }
+
+            return false;
+        })
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials();
     });
 });
 

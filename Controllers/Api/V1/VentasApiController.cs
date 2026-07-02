@@ -167,7 +167,7 @@ public class VentasApiController : BaseApiController
                     f.MesaId == mesa.Id && 
                     f.Id != orden.Id && 
                     f.Estado != SD.EstadoOrdenPagado && 
-                    f.Estado != "Cancelado");
+                    f.Estado != SD.EstadoOrdenCancelado);
                 
                 if (!hayOtrasActivas)
                 {

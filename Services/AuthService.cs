@@ -37,6 +37,13 @@ public class AuthService : IAuthService
             return null;
         }
 
+        // Rehashear a BCrypt si aún está en SHA256 legacy
+        if (!usuario.Contrasena.StartsWith("$2"))
+        {
+            usuario.Contrasena = PasswordHelper.HashPassword(contrasena);
+            _context.SaveChanges();
+        }
+
         return usuario;
     }
 

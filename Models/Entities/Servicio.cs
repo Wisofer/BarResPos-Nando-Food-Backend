@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace BarRestPOS.Models.Entities;
@@ -27,6 +28,9 @@ public class Servicio
     public bool Destacado { get; set; } = false; // Para mostrar en la pantalla principal
     public bool Activo { get; set; } = true;
     public DateTime FechaCreacion { get; set; } = DateTime.Now;
+
+    [Timestamp]
+    public byte[] RowVersion { get; set; } = [];
     
     // Relaciones
     public virtual CategoriaProducto? CategoriaProducto { get; set; }

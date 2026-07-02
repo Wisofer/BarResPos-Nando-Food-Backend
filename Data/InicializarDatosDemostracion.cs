@@ -28,7 +28,7 @@ public static class InicializarDatosDemostracion
             {
                 var ubicaciones = new List<Ubicacion>
                 {
-                    new Ubicacion { Nombre = "Sala", Descripcion = "Área principal", Activo = true, FechaCreacion = DateTime.Now },
+                    new Ubicacion { Nombre = "Salón", Descripcion = "Área principal", Activo = true, FechaCreacion = DateTime.Now },
                     new Ubicacion { Nombre = "Barra", Descripcion = "Asientos en barra", Activo = true, FechaCreacion = DateTime.Now }
                 };
                 context.Ubicaciones.AddRange(ubicaciones);
@@ -38,7 +38,7 @@ public static class InicializarDatosDemostracion
             // 2. Inicializar Mesas si no existen
             if (!context.Mesas.Any())
             {
-                var sala = context.Ubicaciones.FirstOrDefault(u => u.Nombre == "Sala");
+                var sala = context.Ubicaciones.FirstOrDefault(u => u.Nombre == "Salón");
                 var barra = context.Ubicaciones.FirstOrDefault(u => u.Nombre == "Barra");
 
                 var mesas = new List<Mesa>();
@@ -47,7 +47,7 @@ public static class InicializarDatosDemostracion
                 {
                     for(int i = 1; i <= 10; i++)
                     {
-                        mesas.Add(new Mesa { Numero = $"Sala {i}", Capacidad = 4, Estado = "Libre", UbicacionId = sala.Id, Activo = true, FechaCreacion = DateTime.Now });
+                        mesas.Add(new Mesa { Numero = $"Mesa {i}", Capacidad = 4, Estado = "Libre", UbicacionId = sala.Id, Activo = true, FechaCreacion = DateTime.Now });
                     }
                 }
 

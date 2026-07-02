@@ -375,6 +375,8 @@ public class PagoService : IPagoService
         }
         facturasAfectadas.AddRange(pago.PagoFacturas.Select(pf => pf.FacturaId));
 
+        using var tx = _context.Database.BeginTransaction();
+
         _context.Pagos.Remove(pago);
         _context.SaveChanges();
 
@@ -392,6 +394,7 @@ public class PagoService : IPagoService
             }
         }
         _context.SaveChanges();
+        tx.Commit();
 
         return true;
     }
@@ -427,6 +430,8 @@ public class PagoService : IPagoService
 
         if (eliminados > 0)
         {
+            using var tx = _context.Database.BeginTransaction();
+
             _context.SaveChanges();
 
             // Actualizar estado de facturas afectadas
@@ -443,6 +448,7 @@ public class PagoService : IPagoService
                 }
             }
             _context.SaveChanges();
+            tx.Commit();
         }
 
         return (eliminados, noEncontrados);
