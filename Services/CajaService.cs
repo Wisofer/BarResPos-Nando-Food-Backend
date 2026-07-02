@@ -10,10 +10,12 @@ namespace BarRestPOS.Services;
 public class CajaService : ICajaService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IAuditService _auditService;
 
-    public CajaService(ApplicationDbContext context)
+    public CajaService(ApplicationDbContext context, IAuditService auditService)
     {
         _context = context;
+        _auditService = auditService;
     }
 
     public async Task<EstadoCajaResponse> ObtenerEstadoActualAsync()
@@ -43,7 +45,7 @@ public class CajaService : ICajaService
             {
                 f.Id,
                 f.Numero,
-                Mesa = f.Mesa != null ? f.Mesa.Numero : "S/M",
+                Mesa = f.Mesa != null ? f.Mesa.Numero : (!string.IsNullOrEmpty(f.OrigenPedido) && f.OrigenPedido.ToLower() != "salon" ? f.OrigenPedido : "S/M"),
                 Cliente = f.Cliente != null ? f.Cliente.Nombre : "General",
                 f.Monto,
                 f.Estado,
@@ -82,6 +84,16 @@ public class CajaService : ICajaService
 
         _context.CierresCaja.Add(cierre);
         await _context.SaveChangesAsync();
+
+        // Registrar acción en la bitácora de auditoría
+        await _auditService.RegistrarAccionAsync(
+            "AperturaCaja",
+            "Caja",
+            cierre.Id,
+            new { montoInicial = montoInicial },
+            usuarioId
+        );
+
         return cierre;
     }
 
@@ -198,6 +210,26 @@ public class CajaService : ICajaService
         cierre.FechaHoraCierre = DateTime.Now;
 
         await _context.SaveChangesAsync();
+
+        // Registrar acción en la bitácora de auditoría
+        await _auditService.RegistrarAccionAsync(
+            "CierreCaja",
+            "Caja",
+            cierre.Id,
+            new { montoEsperado = cierre.MontoEsperado, montoReal = cierre.MontoReal, diferencia = cierre.Diferencia, totalGeneral = cierre.TotalGeneral },
+            null
+        );
+
+        if (cierre.Diferencia.HasValue && cierre.Diferencia.Value != 0)
+        {
+            await _auditService.RegistrarAccionAsync(
+                "DiferenciaCierre",
+                "Caja",
+                cierre.Id,
+                new { diferencia = cierre.Diferencia.Value, esperado = cierre.MontoEsperado, real = cierre.MontoReal },
+                null
+            );
+        }
 
         // Generar un respaldo automático al realizar el cierre de caja
         BarRestPOS.Utils.BackupHelper.CrearRespaldo("cierre");

@@ -125,6 +125,8 @@ builder.Services.AddAuthorization(options =>
 });
 
 // Registrar servicios
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAuditService, AuditService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IClienteService, ClienteService>(); // Necesario para FacturaService y PagoService

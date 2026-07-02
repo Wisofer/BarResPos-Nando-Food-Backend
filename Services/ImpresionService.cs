@@ -151,7 +151,7 @@ public class ImpresionService : IImpresionService
             esc.PrintLine($"RUC: {ruc}");
         }
 
-        var mesaNum = orden.Mesa?.Numero ?? "S/M";
+        var mesaNum = orden.Mesa?.Numero ?? (!string.IsNullOrEmpty(orden.OrigenPedido) && orden.OrigenPedido.ToLower() != "salon" ? orden.OrigenPedido : "S/M");
 
         return esc.DrawDivider()
            .AlignLeft()
@@ -199,14 +199,17 @@ public class ImpresionService : IImpresionService
            .AlignLeft();
 
         string mesaStr;
-        if (string.Equals(orden.OrigenPedido, SD.OrigenPedidoDelivery, StringComparison.OrdinalIgnoreCase))
+        if (orden.Mesa != null)
         {
-            mesaStr = "ORIGEN: Delivery";
+            mesaStr = $"ORIGEN: {orden.Mesa.Numero}";
+        }
+        else if (!string.IsNullOrEmpty(orden.OrigenPedido) && orden.OrigenPedido.ToLower() != "salon")
+        {
+            mesaStr = $"ORIGEN: {orden.OrigenPedido}";
         }
         else
         {
-            var mesaNum = orden.Mesa?.Numero ?? "S/M";
-            mesaStr = $"ORIGEN: {mesaNum}";
+            mesaStr = "ORIGEN: S/M";
         }
         var ordenStr = $"ORDEN: #{numero}";
         var meseroStr = $"MESERO: {orden.Mesero?.NombreCompleto ?? "Sin registro"}";

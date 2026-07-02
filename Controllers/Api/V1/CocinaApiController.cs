@@ -52,6 +52,7 @@ public class CocinaApiController : BaseApiController
                 f.EstadoCocina,
                 f.FechaCreacion,
                 Mesa = f.Mesa != null ? f.Mesa.Numero : "S/M",
+                MesaOrigen = f.MesaOrigenNumero,
                 Mesero = f.Mesero != null ? f.Mesero.NombreCompleto : "N/A",
                 DeliveryClienteNombre = f.DeliveryClienteNombre,
                 DeliveryClienteTelefono = f.DeliveryClienteTelefono,
@@ -81,9 +82,9 @@ public class CocinaApiController : BaseApiController
         var orden = _context.Facturas.FirstOrDefault(f => f.Id == id);
         if (orden == null) return FailResponse("Orden no encontrada.", StatusCodes.Status404NotFound);
 
-        if (orden.Estado == SD.EstadoOrdenPagado || orden.Estado == SD.EstadoOrdenCancelado)
+        if (orden.Estado == SD.EstadoOrdenCancelado)
         {
-            return FailResponse("No se puede cambiar estado de cocina de una orden pagada o cancelada.", StatusCodes.Status409Conflict);
+            return FailResponse("No se puede cambiar estado de cocina de una orden cancelada.", StatusCodes.Status409Conflict);
         }
 
         var nuevoEstado = request.Estado.Trim();
@@ -133,9 +134,9 @@ public class CocinaApiController : BaseApiController
 
         if (orden == null) return FailResponse("Orden no encontrada.", StatusCodes.Status404NotFound);
 
-        if (orden.Estado == SD.EstadoOrdenPagado || orden.Estado == SD.EstadoOrdenCancelado)
+        if (orden.Estado == SD.EstadoOrdenCancelado)
         {
-            return FailResponse("No se puede cambiar estado de cocina de una orden pagada o cancelada.", StatusCodes.Status409Conflict);
+            return FailResponse("No se puede cambiar estado de cocina de una orden cancelada.", StatusCodes.Status409Conflict);
         }
 
         item.Estado = request.Estado.Trim();
@@ -195,10 +196,10 @@ public class CocinaApiController : BaseApiController
             foreach (var grupo in ordenes)
             {
                 var orden = grupo.Key;
-                if (orden.Estado == SD.EstadoOrdenPagado || orden.Estado == SD.EstadoOrdenCancelado)
+                if (orden.Estado == SD.EstadoOrdenCancelado)
                 {
                     tx.Rollback();
-                    return FailResponse($"No se puede cambiar estado de cocina de la orden {orden.Numero}: está pagada o cancelada.", StatusCodes.Status409Conflict);
+                    return FailResponse($"No se puede cambiar estado de cocina de la orden {orden.Numero}: está cancelada.", StatusCodes.Status409Conflict);
                 }
             }
 

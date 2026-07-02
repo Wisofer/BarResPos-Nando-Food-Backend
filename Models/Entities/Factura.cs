@@ -47,6 +47,10 @@ public class Factura
     
     // Observaciones
     public string? Observaciones { get; set; } // Notas especiales de la orden
+    
+    // Traslado de mesa
+    /// <summary>Número de la mesa original si la orden fue trasladada (se llena solo en el primer traslado).</summary>
+    public string? MesaOrigenNumero { get; set; }
 
     // Concurrency token for lost-update prevention
     [Timestamp]

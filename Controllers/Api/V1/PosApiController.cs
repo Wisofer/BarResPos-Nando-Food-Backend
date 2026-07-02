@@ -18,6 +18,7 @@ public class PosApiController : BaseApiController
     private readonly IInventarioService _inventarioService;
     private readonly PedidoCancelacionService _pedidoCancelacionService;
     private readonly IConfiguracionService _configuracionService;
+    private readonly IAuditService _auditService;
     private readonly ILogger<PosApiController> _logger;
 
     public PosApiController(
@@ -25,12 +26,14 @@ public class PosApiController : BaseApiController
         IInventarioService inventarioService,
         PedidoCancelacionService pedidoCancelacionService,
         IConfiguracionService configuracionService,
+        IAuditService auditService,
         ILogger<PosApiController> logger)
     {
         _context = context;
         _inventarioService = inventarioService;
         _pedidoCancelacionService = pedidoCancelacionService;
         _configuracionService = configuracionService;
+        _auditService = auditService;
         _logger = logger;
     }
 
@@ -65,6 +68,8 @@ public class PosApiController : BaseApiController
                 .OrderByDescending(f => f.FechaCreacion)
                 .FirstOrDefault();
         }
+
+        bool esOrdenNueva = (orden == null);
 
         using var tx = _context.Database.BeginTransaction();
         try
@@ -195,6 +200,40 @@ public class PosApiController : BaseApiController
 
             _context.SaveChanges();
             tx.Commit();
+
+            // Registrar auditoría de POS
+            try
+            {
+                var mesa = orden.MesaId.HasValue ? _context.Mesas.Find(orden.MesaId.Value) : null;
+                var mesaNum = mesa?.Numero ?? (!string.IsNullOrEmpty(orden.OrigenPedido) && orden.OrigenPedido.ToLower() != "salon" ? orden.OrigenPedido : "S/M");
+                
+                if (esOrdenNueva && orden.MesaId.HasValue)
+                {
+                    _auditService.RegistrarAccionAsync(
+                        "AperturaMesa",
+                        mesaNum,
+                        orden.Id,
+                        new { numero = orden.Numero },
+                        userId.Value
+                    ).GetAwaiter().GetResult();
+                }
+
+                foreach (var p in lineas)
+                {
+                    var prod = serviciosPorId[p.ProductoId];
+                    _auditService.RegistrarAccionAsync(
+                        "AdicionProducto",
+                        mesaNum,
+                        orden.Id,
+                        new { producto = prod.Nombre, cantidad = p.Cantidad, precio = prod.Precio, notas = p.Notas },
+                        userId.Value
+                    ).GetAwaiter().GetResult();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al registrar logs de auditoria en POS");
+            }
         }
         catch (Exception ex)
         {

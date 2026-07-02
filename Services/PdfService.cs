@@ -717,7 +717,7 @@ public class PdfService : IPdfService
         var cliente = pedido.Cliente?.Nombre
             ?? pedido.DeliveryClienteNombre
             ?? "Cliente";
-        var mesa = pedido.Mesa?.Numero ?? "S/M";
+        var mesa = pedido.Mesa?.Numero ?? (!string.IsNullOrEmpty(pedido.OrigenPedido) && pedido.OrigenPedido.ToLower() != "salon" ? pedido.OrigenPedido : "S/M");
         var tipo = pedido.OrigenPedido;
 
         var lineas = (pedido.FacturaServicios ?? new List<FacturaServicio>())

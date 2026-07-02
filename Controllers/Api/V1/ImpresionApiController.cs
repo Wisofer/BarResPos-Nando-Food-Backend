@@ -384,7 +384,8 @@ public class ImpresionApiController : ControllerBase
         int lineaId,
         [FromBody] CancelarPedidoRequest? request,
         [FromServices] IConfiguracionService configuracionService,
-        [FromServices] IInventarioService inventarioService)
+        [FromServices] IInventarioService inventarioService,
+        [FromServices] IAuditService auditService)
     {
         try
         {
@@ -502,6 +503,21 @@ public class ImpresionApiController : ControllerBase
 
                 _context.SaveChanges();
                 tx.Commit();
+
+                // Registrar auditoría de cancelación de línea con PIN
+                try
+                {
+                    await auditService.RegistrarAccionAsync(
+                        "CancelacionLineaConPin",
+                        orden.Mesa?.Numero ?? (orden.MesaId.HasValue ? $"Mesa {orden.MesaId.Value}" : "Delivery/Llevar"),
+                        orden.Id,
+                        new { producto = linea.Servicio?.Nombre ?? $"ID: {linea.ServicioId}", cantidad = linea.Cantidad, monto = linea.Monto }
+                    );
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error al registrar auditoria de cancelacion de linea");
+                }
 
                 return Ok(new
                 {

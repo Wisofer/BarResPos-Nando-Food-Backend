@@ -11,12 +11,14 @@ public class PagoService : IPagoService
     private readonly ApplicationDbContext _context;
     private readonly IFacturaService _facturaService;
     private readonly IConfiguracionService _configuracionService;
+    private readonly IAuditService _auditService;
 
-    public PagoService(ApplicationDbContext context, IFacturaService facturaService, IConfiguracionService configuracionService)
+    public PagoService(ApplicationDbContext context, IFacturaService facturaService, IConfiguracionService configuracionService, IAuditService auditService)
     {
         _context = context;
         _facturaService = facturaService;
         _configuracionService = configuracionService;
+        _auditService = auditService;
     }
 
     public List<Pago> ObtenerTodos()
@@ -282,6 +284,26 @@ public class PagoService : IPagoService
                     factura.Estado = SD.EstadoFacturaPagada;
                     _context.SaveChanges();
                 }
+            }
+
+            // Registrar acción en la bitácora de auditoría
+            try
+            {
+                var facIds = facturaIds ?? new List<int> { pago.FacturaId ?? 0 };
+                var facNumbers = _context.Facturas.Where(f => facIds.Contains(f.Id)).Select(f => f.Numero).ToList();
+                var mesas = _context.Facturas.Include(f => f.Mesa).Where(f => facIds.Contains(f.Id) && f.MesaId.HasValue).Select(f => f.Mesa!.Numero).ToList();
+                var mesaNum = mesas.Any() ? string.Join(", ", mesas) : "Delivery/Llevar";
+
+                _auditService.RegistrarAccionAsync(
+                    "PagoProcesado",
+                    mesaNum,
+                    pago.FacturaId,
+                    new { monto = pago.Monto, tipoPago = pago.TipoPago, facturas = facNumbers }
+                ).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al registrar auditoria de pago: {ex.Message}");
             }
 
             tx.Commit();

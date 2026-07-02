@@ -24,6 +24,7 @@ public class PedidosApiController : BaseApiController
     private readonly OrdenLineasReemplazoService _lineasService;
     private readonly PedidoCancelacionService _pedidoCancelacionService;
     private readonly IConfiguracionService _configuracionService;
+    private readonly IAuditService _auditService;
     private readonly ILogger<PedidosApiController> _logger;
     private readonly IConfiguration _configuration;
 
@@ -35,6 +36,7 @@ public class PedidosApiController : BaseApiController
         OrdenLineasReemplazoService lineasService,
         PedidoCancelacionService pedidoCancelacionService,
         IConfiguracionService configuracionService,
+        IAuditService auditService,
         ILogger<PedidosApiController> logger,
         IConfiguration configuration)
     {
@@ -45,6 +47,7 @@ public class PedidosApiController : BaseApiController
         _lineasService = lineasService;
         _pedidoCancelacionService = pedidoCancelacionService;
         _configuracionService = configuracionService;
+        _auditService = auditService;
         _logger = logger;
         _configuration = configuration;
     }
@@ -762,10 +765,36 @@ public class PedidosApiController : BaseApiController
                 StatusCodes.Status409Conflict);
 
         var mesaIdAlInicio = pedido.MesaId;
+        
+        // Guardar la mesa de origen (solo en el primer traslado, para no pisar el origen real)
+        if (string.IsNullOrEmpty(pedido.MesaOrigenNumero))
+        {
+            var mesaActualParaOrigen = _context.Mesas.AsNoTracking().FirstOrDefault(m => m.Id == pedido.MesaId);
+            pedido.MesaOrigenNumero = mesaActualParaOrigen?.Numero ?? (pedido.MesaId.HasValue ? $"Mesa {pedido.MesaId.Value}" : null);
+        }
+        
         pedido.MesaId = request.MesaId;
 
         SincronizarEstadosMesasPorPedido(pedido, mesaIdAlInicio);
         _context.SaveChanges();
+
+        // Registrar acción en la bitácora de auditoría
+        try
+        {
+            var mesaOrigen = _context.Mesas.AsNoTracking().FirstOrDefault(m => m.Id == mesaIdAlInicio);
+            var mesaOrigenNum = mesaOrigen?.Numero ?? (mesaIdAlInicio.HasValue ? $"Mesa {mesaIdAlInicio.Value}" : "N/A");
+            
+            _auditService.RegistrarAccionAsync(
+                "TrasladoMesa",
+                mesaDestino.Numero,
+                pedido.Id,
+                new { desdeMesa = mesaOrigenNum, haciaMesa = mesaDestino.Numero }
+            ).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al registrar auditoria de traslado de mesa");
+        }
 
         return OkResponse(new
         {
@@ -959,6 +988,14 @@ public class PedidosApiController : BaseApiController
                     StatusCodes.Status409Conflict);
             }
         }
+
+        var mesaStr = pedidoOriginal.MesaId.HasValue ? _context.Mesas.Find(pedidoOriginal.MesaId.Value)?.Numero : (!string.IsNullOrEmpty(pedidoOriginal.OrigenPedido) && pedidoOriginal.OrigenPedido.ToLower() != "salon" ? pedidoOriginal.OrigenPedido : "S/M");
+        _auditService.RegistrarAccionAsync(
+            "SeparacionCuenta",
+            mesaStr,
+            pedidoOriginal.Id,
+            new { desdeOrden = pedidoOriginal.Numero, haciaOrden = nuevoPedido.Numero, montoTrasladado = montoRestado }
+        ).GetAwaiter().GetResult();
 
         return OkResponse(new { NuevoPedidoId = nuevoPedido.Id }, "Cuenta separada exitosamente.");
     }

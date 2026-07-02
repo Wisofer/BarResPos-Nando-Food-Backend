@@ -38,6 +38,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<MovimientoInventario> MovimientosInventario { get; set; }
     public DbSet<Proveedor> Proveedores { get; set; }
     public DbSet<RefreshToken> RefreshTokens { get; set; }
+    public DbSet<RegistroAuditoria> RegistrosAuditoria { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -443,6 +444,23 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => e.Fecha);
             entity.HasIndex(e => e.Tipo);
             entity.HasIndex(e => new { e.ProductoId, e.Fecha });
+        });
+
+        // Configuración de RegistroAuditoria
+        modelBuilder.Entity<RegistroAuditoria>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Accion).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.NombreUsuario).HasMaxLength(200);
+            entity.Property(e => e.RolUsuario).HasMaxLength(100);
+            entity.Property(e => e.MesaNumero).HasMaxLength(50);
+            entity.Property(e => e.DetallesJson).HasMaxLength(2000);
+            
+            // Índices para búsquedas y filtros rápidos de auditoría
+            entity.HasIndex(e => e.Fecha);
+            entity.HasIndex(e => e.Accion);
+            entity.HasIndex(e => e.MesaNumero);
+            entity.HasIndex(e => new { e.Fecha, e.Accion });
         });
     }
 

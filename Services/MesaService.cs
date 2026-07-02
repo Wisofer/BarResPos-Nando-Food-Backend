@@ -9,10 +9,12 @@ namespace BarRestPOS.Services;
 public class MesaService : IMesaService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IAuditService _auditService;
 
-    public MesaService(ApplicationDbContext context)
+    public MesaService(ApplicationDbContext context, IAuditService auditService)
     {
         _context = context;
+        _auditService = auditService;
     }
 
     public List<Mesa> ObtenerTodas()
@@ -182,8 +184,25 @@ public class MesaService : IMesaService
         if (!estadosValidos.Contains(nuevoEstado))
             throw new Exception($"Estado '{nuevoEstado}' no es válido");
 
+        var anteriorEstado = mesa.Estado;
         mesa.Estado = nuevoEstado;
         _context.SaveChanges();
+
+        // Registrar acción en la bitácora de auditoría
+        try
+        {
+            _auditService.RegistrarAccionAsync(
+                "CambioEstadoMesa",
+                mesa.Numero,
+                null,
+                new { anterior = anteriorEstado, nuevo = nuevoEstado }
+            ).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al registrar auditoria de estado de mesa: {ex.Message}");
+        }
+
         return true;
     }
 

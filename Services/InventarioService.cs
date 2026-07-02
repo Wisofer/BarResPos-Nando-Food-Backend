@@ -9,10 +9,12 @@ namespace BarRestPOS.Services;
 public class InventarioService : IInventarioService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IAuditService _auditService;
 
-    public InventarioService(ApplicationDbContext context)
+    public InventarioService(ApplicationDbContext context, IAuditService auditService)
     {
         _context = context;
+        _auditService = auditService;
     }
 
     public List<MovimientoInventario> ObtenerTodos()
@@ -93,6 +95,22 @@ public class InventarioService : IInventarioService
         _context.MovimientosInventario.Add(movimiento);
         _context.SaveChanges();
 
+        // Registrar acción en la bitácora de auditoría
+        try
+        {
+            _auditService.RegistrarAccionAsync(
+                "InventarioEntrada",
+                "Inventario",
+                null,
+                new { producto = producto.Nombre, cantidad = cantidad, stockAnterior = stockAnterior, stockNuevo = stockNuevo, obs = observaciones },
+                usuarioId
+            ).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al registrar auditoria de entrada de inventario: {ex.Message}");
+        }
+
         return movimiento;
     }
 
@@ -165,6 +183,25 @@ public class InventarioService : IInventarioService
         _context.MovimientosInventario.Add(movimiento);
         _context.SaveChanges();
 
+        // Registrar acción en la bitácora de auditoría si no es venta
+        if (subtipo != SD.SubtipoMovimientoVenta)
+        {
+            try
+            {
+                _auditService.RegistrarAccionAsync(
+                    "InventarioSalida",
+                    "Inventario",
+                    null,
+                    new { producto = producto.Nombre, cantidad = cantidad, stockAnterior = stockAnterior, stockNuevo = stockNuevo, subtipo = subtipo, obs = observaciones },
+                    usuarioId
+                ).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error al registrar auditoria de salida de inventario: {ex.Message}");
+            }
+        }
+
         return movimiento;
     }
 
@@ -195,6 +232,22 @@ public class InventarioService : IInventarioService
 
         _context.MovimientosInventario.Add(movimiento);
         _context.SaveChanges();
+
+        // Registrar acción en la bitácora de auditoría
+        try
+        {
+            _auditService.RegistrarAccionAsync(
+                "InventarioAjuste",
+                "Inventario",
+                null,
+                new { producto = producto.Nombre, stockAnterior = stockAnterior, stockNuevo = cantidadNueva, diferencia = diferencia, obs = observaciones },
+                usuarioId
+            ).GetAwaiter().GetResult();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al registrar auditoria de ajuste de inventario: {ex.Message}");
+        }
 
         return movimiento;
     }
