@@ -9,7 +9,7 @@ public interface ICajaService
     Task<List<object>> ObtenerOrdenesPendientesAsync();
     Task<CierreCaja> AbrirCajaAsync(decimal montoInicial, int usuarioId);
     Task<PreviewCierreCajaResponse> ObtenerPreviewCierreAsync();
-    Task<CierreCaja> CerrarCajaAsync(decimal? montoReal, string? observaciones);
+    Task<CierreCaja> CerrarCajaAsync(decimal? montoReal, string? observaciones, int usuarioId);
     Task<PagedResult<CierreCaja>> ObtenerHistorialAsync(int page, int pageSize, DateTime? desde = null, DateTime? hasta = null);
     Task<List<CierreCaja>> ObtenerHistorialParaExportAsync(DateTime? desde, DateTime? hasta);
     Task<CierreCaja?> ObtenerCierrePorIdAsync(int id);

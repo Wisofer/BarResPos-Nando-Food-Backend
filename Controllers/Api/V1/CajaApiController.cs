@@ -127,7 +127,8 @@ public class CajaApiController : BaseApiController
     {
         try
         {
-            var cierre = await _cajaService.CerrarCajaAsync(request.MontoReal, request.Observaciones);
+            var userId = SecurityHelper.GetUserId(User) ?? 1;
+            var cierre = await _cajaService.CerrarCajaAsync(request.MontoReal, request.Observaciones, userId);
             return OkResponse(new
             {
                 cierre.Id,

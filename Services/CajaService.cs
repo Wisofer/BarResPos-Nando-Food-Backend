@@ -178,7 +178,7 @@ public class CajaService : ICajaService
         };
     }
 
-    public async Task<CierreCaja> CerrarCajaAsync(decimal? montoReal, string? observaciones)
+    public async Task<CierreCaja> CerrarCajaAsync(decimal? montoReal, string? observaciones, int usuarioId)
     {
         var cierre = await _context.CierresCaja
             .OrderByDescending(c => c.FechaHoraCierre)
@@ -208,6 +208,7 @@ public class CajaService : ICajaService
         cierre.Observaciones = observaciones;
         cierre.Estado = "Cerrado";
         cierre.FechaHoraCierre = DateTime.Now;
+        cierre.UsuarioId = usuarioId;
 
         await _context.SaveChangesAsync();
 
@@ -217,7 +218,7 @@ public class CajaService : ICajaService
             "Caja",
             cierre.Id,
             new { montoEsperado = cierre.MontoEsperado, montoReal = cierre.MontoReal, diferencia = cierre.Diferencia, totalGeneral = cierre.TotalGeneral },
-            null
+            usuarioId
         );
 
         if (cierre.Diferencia.HasValue && cierre.Diferencia.Value != 0)
@@ -227,7 +228,7 @@ public class CajaService : ICajaService
                 "Caja",
                 cierre.Id,
                 new { diferencia = cierre.Diferencia.Value, esperado = cierre.MontoEsperado, real = cierre.MontoReal },
-                null
+                usuarioId
             );
         }
 
