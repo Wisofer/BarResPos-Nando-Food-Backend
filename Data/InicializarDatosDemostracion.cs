@@ -79,7 +79,9 @@ public static class InicializarDatosDemostracion
                     new CategoriaProducto { Nombre = "Nachos", Descripcion = "Nachos de Pollo, Res o Mixto", ColorHex = "#eab308", IconoNombre = "UtensilsCrossed", Orden = 6, RequiereCocina = true, Activo = true, FechaCreacion = DateTime.Now },
                     new CategoriaProducto { Nombre = "De Todo Un Poco", Descripcion = "Salchipapas, Deditos, Burritos", ColorHex = "#a855f7", IconoNombre = "ChefHat", Orden = 7, RequiereCocina = true, Activo = true, FechaCreacion = DateTime.Now },
                     new CategoriaProducto { Nombre = "Extras", Descripcion = "Papas y Queso", ColorHex = "#94a3b8", IconoNombre = "UtensilsCrossed", Orden = 8, RequiereCocina = true, Activo = true, FechaCreacion = DateTime.Now },
-                    new CategoriaProducto { Nombre = "Bebidas", Descripcion = "Batidos y refrescos", ColorHex = "#3b82f6", IconoNombre = "GlassWater", Orden = 9, RequiereCocina = false, Activo = true, FechaCreacion = DateTime.Now }
+                    new CategoriaProducto { Nombre = "Bebidas", Descripcion = "Sodas, agua y refrescos", ColorHex = "#3b82f6", IconoNombre = "GlassWater", Orden = 9, RequiereCocina = false, Activo = true, FechaCreacion = DateTime.Now },
+                    new CategoriaProducto { Nombre = "Frescos Naturales", Descripcion = "Jugos naturales y batidos de frutas", ColorHex = "#ef4444", IconoNombre = "GlassWater", Orden = 10, RequiereCocina = false, Activo = true, FechaCreacion = DateTime.Now },
+                    new CategoriaProducto { Nombre = "Café", Descripcion = "Café y bebidas especiales", ColorHex = "#3b82f6", IconoNombre = "UtensilsCrossed", Orden = 11, RequiereCocina = false, Activo = true, FechaCreacion = DateTime.Now }
                 };
 
                 context.CategoriasProducto.AddRange(categorias);
@@ -99,6 +101,8 @@ public static class InicializarDatosDemostracion
                 var catDeTodo = cats.FirstOrDefault(c => c.Nombre == "De Todo Un Poco");
                 var catExtras = cats.FirstOrDefault(c => c.Nombre == "Extras");
                 var catBebidas = cats.FirstOrDefault(c => c.Nombre == "Bebidas");
+                var catFrescosNaturales = cats.FirstOrDefault(c => c.Nombre == "Frescos Naturales");
+                var catCafe = cats.FirstOrDefault(c => c.Nombre == "Café");
 
                 var productos = new List<Servicio>
                 {
@@ -139,7 +143,34 @@ public static class InicializarDatosDemostracion
                     new Servicio { Codigo = "EXT03", Nombre = "Queso Cheddar", Precio = 50, Categoria = "Comidas", CategoriaProductoId = catExtras?.Id },
 
                     // Bebidas
-                    new Servicio { Codigo = "BEB01", Nombre = "Batidos", Precio = 100, Categoria = "Bebidas", CategoriaProductoId = catBebidas?.Id }
+                    new Servicio { Codigo = "BEB01", Nombre = "Coca Pequeña", Precio = 25, Categoria = "Bebidas", CategoriaProductoId = catBebidas?.Id },
+                    new Servicio { Codigo = "BEB02", Nombre = "Coca 12 oz", Precio = 30, Categoria = "Bebidas", CategoriaProductoId = catBebidas?.Id },
+                    new Servicio { Codigo = "BEB03", Nombre = "Coca 500 ml", Precio = 35, Categoria = "Bebidas", CategoriaProductoId = catBebidas?.Id },
+                    new Servicio { Codigo = "BEB04", Nombre = "Coca Grande", Precio = 65, Categoria = "Bebidas", CategoriaProductoId = catBebidas?.Id },
+                    new Servicio { Codigo = "BEB05", Nombre = "Coca 2 Litros", Precio = 80, Categoria = "Bebidas", CategoriaProductoId = catBebidas?.Id },
+                    new Servicio { Codigo = "BEB06", Nombre = "Lata", Precio = 30, Categoria = "Bebidas", CategoriaProductoId = catBebidas?.Id },
+                    new Servicio { Codigo = "BEB07", Nombre = "Agua 500 ml", Precio = 20, Categoria = "Bebidas", CategoriaProductoId = catBebidas?.Id },
+                    new Servicio { Codigo = "BEB08", Nombre = "Agua 1 Litro", Precio = 28, Categoria = "Bebidas", CategoriaProductoId = catBebidas?.Id },
+                    new Servicio { Codigo = "BEB09", Nombre = "Agua 2 Litros", Precio = 45, Categoria = "Bebidas", CategoriaProductoId = catBebidas?.Id },
+                    new Servicio { Codigo = "BEB10", Nombre = "Del Valle", Precio = 30, Categoria = "Bebidas", CategoriaProductoId = catBebidas?.Id },
+                    new Servicio { Codigo = "BEB11", Nombre = "HC Té", Precio = 30, Categoria = "Bebidas", CategoriaProductoId = catBebidas?.Id },
+                    new Servicio { Codigo = "BEB12", Nombre = "HC Pequeño", Precio = 25, Categoria = "Bebidas", CategoriaProductoId = catBebidas?.Id },
+                    new Servicio { Codigo = "BEB13", Nombre = "Powerade", Precio = 40, Categoria = "Bebidas", CategoriaProductoId = catBebidas?.Id },
+
+                    // Frescos Naturales
+                    new Servicio { Codigo = "FRS01", Nombre = "Natural", Precio = 50, Categoria = "Frescos Naturales", CategoriaProductoId = catFrescosNaturales?.Id },
+                    new Servicio { Codigo = "FRS02", Nombre = "Natural Llevar", Precio = 55, Categoria = "Frescos Naturales", CategoriaProductoId = catFrescosNaturales?.Id },
+                    new Servicio { Codigo = "FRS03", Nombre = "Piña", Precio = 55, Categoria = "Frescos Naturales", CategoriaProductoId = catFrescosNaturales?.Id },
+                    new Servicio { Codigo = "FRS04", Nombre = "Fresa", Precio = 60, Categoria = "Frescos Naturales", CategoriaProductoId = catFrescosNaturales?.Id },
+                    new Servicio { Codigo = "FRS05", Nombre = "Guanábana", Precio = 65, Categoria = "Frescos Naturales", CategoriaProductoId = catFrescosNaturales?.Id },
+                    new Servicio { Codigo = "FRS06", Nombre = "Mora", Precio = 65, Categoria = "Frescos Naturales", CategoriaProductoId = catFrescosNaturales?.Id },
+                    new Servicio { Codigo = "FRS07", Nombre = "Fruta Mixta", Precio = 70, Categoria = "Frescos Naturales", CategoriaProductoId = catFrescosNaturales?.Id },
+                    new Servicio { Codigo = "FRS08", Nombre = "Limonada Hierbabuena", Precio = 60, Categoria = "Frescos Naturales", CategoriaProductoId = catFrescosNaturales?.Id },
+                    new Servicio { Codigo = "FRS09", Nombre = "Oreo (Batido)", Precio = 85, Categoria = "Frescos Naturales", CategoriaProductoId = catFrescosNaturales?.Id },
+
+                    // Café
+                    new Servicio { Codigo = "CAF01", Nombre = "Café", Precio = 30, Categoria = "Café", CategoriaProductoId = catCafe?.Id },
+                    new Servicio { Codigo = "CAF02", Nombre = "Café Llevar", Precio = 35, Categoria = "Café", CategoriaProductoId = catCafe?.Id }
                 };
 
                 context.Servicios.AddRange(productos);
