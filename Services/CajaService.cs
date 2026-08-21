@@ -33,12 +33,43 @@ public class CajaService : ICajaService
         };
     }
 
+    private async Task LimpiarBorradoresVaciosAsync()
+    {
+        var ordenesVacias = await _context.Facturas
+            .Include(f => f.FacturaServicios)
+            .Where(f => f.Estado != SD.EstadoOrdenPagado 
+                     && f.Estado != SD.EstadoOrdenCancelado 
+                     && (f.Monto <= 0 || !f.FacturaServicios.Any()))
+            .ToListAsync();
+
+        if (ordenesVacias.Count > 0)
+        {
+            foreach (var ov in ordenesVacias)
+            {
+                ov.Estado = SD.EstadoOrdenCancelado;
+                if (ov.MesaId.HasValue)
+                {
+                    var otros = await _context.Facturas.AnyAsync(f => f.MesaId == ov.MesaId.Value && f.Id != ov.Id && f.Estado != SD.EstadoOrdenPagado && f.Estado != SD.EstadoOrdenCancelado);
+                    if (!otros)
+                    {
+                        var m = await _context.Mesas.FirstOrDefaultAsync(m => m.Id == ov.MesaId.Value);
+                        if (m != null) m.Estado = SD.EstadoMesaLibre;
+                    }
+                }
+            }
+            await _context.SaveChangesAsync();
+        }
+    }
+
     public async Task<List<object>> ObtenerOrdenesPendientesAsync()
     {
+        await LimpiarBorradoresVaciosAsync();
+
         return await _context.Facturas
             .AsNoTracking()
             .Include(f => f.Mesa)
             .Include(f => f.Cliente)
+            .Include(f => f.FacturaServicios)
             .Where(f => f.Estado != SD.EstadoOrdenPagado && f.Estado != SD.EstadoOrdenCancelado)
             .OrderByDescending(f => f.FechaCreacion)
             .Select(f => (object)new
@@ -49,7 +80,8 @@ public class CajaService : ICajaService
                 Cliente = f.Cliente != null ? f.Cliente.Nombre : "General",
                 f.Monto,
                 f.Estado,
-                f.FechaCreacion
+                f.FechaCreacion,
+                CantidadProductos = f.FacturaServicios.Sum(fs => fs.Cantidad)
             })
             .ToListAsync();
     }
@@ -184,6 +216,8 @@ public class CajaService : ICajaService
             .OrderByDescending(c => c.FechaHoraCierre)
             .FirstOrDefaultAsync(c => c.Estado == "Abierto");
         if (cierre == null) throw new Exception("No hay ninguna sesión de caja abierta en el sistema para cerrar.");
+
+        await LimpiarBorradoresVaciosAsync();
 
         var preview = await ObtenerPreviewCierreAsync();
 
