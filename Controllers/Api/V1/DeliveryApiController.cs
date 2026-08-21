@@ -380,16 +380,16 @@ public class DeliveryApiController : BaseApiController
         if (idsBarNuevos.Count > 0)
             urlBar += "?lineas=" + string.Join(",", idsBarNuevos);
 
-        if (tieneCocina) urlsNuevas["urlImpresionCocina"] = urlCocina;
-        if (tieneBar) urlsNuevas["urlImpresionBar"] = urlBar;
+        if (idsCocinaNuevos.Count > 0) urlsNuevas["urlImpresionCocina"] = urlCocina;
+        if (idsBarNuevos.Count > 0) urlsNuevas["urlImpresionBar"] = urlBar;
 
         return OkResponse(new
         {
             estado = SD.EstadoOrdenEnCocina,
             estadoCocina = SD.EstadoCocinaEnPreparacion,
             impresionUrls = urlsNuevas,
-            urlImpresionCocina = tieneCocina ? urlsNuevas["urlImpresionCocina"] : null,
-            urlImpresionBar = tieneBar ? urlsNuevas["urlImpresionBar"] : null
+            urlImpresionCocina = urlsNuevas.TryGetValue("urlImpresionCocina", out var uCoc) ? uCoc : null,
+            urlImpresionBar = urlsNuevas.TryGetValue("urlImpresionBar", out var uBar) ? uBar : null
         }, "Pedido enviado a cocina exitosamente.");
     }
 
