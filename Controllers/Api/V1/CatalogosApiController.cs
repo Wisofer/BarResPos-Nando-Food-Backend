@@ -30,6 +30,7 @@ public class CatalogosApiController : BaseApiController
                 c.Descripcion,
                 c.IconoNombre,
                 c.RequiereCocina,
+                RequiereBar = c.RequiereBar ?? (!c.RequiereCocina),
                 c.Activo
             })
             .ToList();
@@ -49,6 +50,7 @@ public class CatalogosApiController : BaseApiController
                 c.Descripcion,
                 c.IconoNombre,
                 c.RequiereCocina,
+                RequiereBar = c.RequiereBar ?? (!c.RequiereCocina),
                 c.Activo
             })
             .FirstOrDefault();
@@ -76,6 +78,7 @@ public class CatalogosApiController : BaseApiController
             IconoNombre = request.IconoNombre?.Trim(),
             Orden = maxOrden + 1,
             RequiereCocina = request.RequiereCocina,
+            RequiereBar = request.RequiereBar ?? (!request.RequiereCocina),
             Activo = request.Activo
         };
 
@@ -100,6 +103,7 @@ public class CatalogosApiController : BaseApiController
         item.Descripcion = request.Descripcion?.Trim();
         item.IconoNombre = request.IconoNombre?.Trim();
         item.RequiereCocina = request.RequiereCocina;
+        item.RequiereBar = request.RequiereBar ?? (!request.RequiereCocina);
         item.Activo = request.Activo;
 
         _context.SaveChanges();
@@ -331,6 +335,7 @@ public class CategoriaProductoUpsertRequest
     public string? Descripcion { get; set; }
     public string? IconoNombre { get; set; }
     public bool RequiereCocina { get; set; } = true;
+    public bool? RequiereBar { get; set; }
     public bool Activo { get; set; } = true;
 }
 

@@ -19,6 +19,12 @@ public class CategoriaProducto
     /// Si es false, los productos de esta categoría no aparecen en KDS ni en ticket de cocina (ej. bebidas).
     /// </summary>
     public bool RequiereCocina { get; set; } = true;
+    /// <summary>
+    /// Si es true, los productos de esta categoría se envían al ticket/impresora de Bar.
+    /// Si es null, por compatibilidad se calcula como (!RequiereCocina).
+    /// Si ambos (RequiereCocina y RequiereBar) son false, la categoría no genera ticket de comanda.
+    /// </summary>
+    public bool? RequiereBar { get; set; }
     public bool Activo { get; set; } = true;
     public DateTime FechaCreacion { get; set; } = DateTime.Now;
     

@@ -25,8 +25,16 @@ public static class CocinaCatalogoHelper
         lineas.Where(FacturaServicioRequiereCocina);
 
     // BAR LOGIC
-    public static bool ServicioRequiereBar(Servicio? servicio) =>
-        !ServicioRequiereCocina(servicio);
+    public static bool ServicioRequiereBar(Servicio? servicio)
+    {
+        if (servicio?.CategoriaProducto != null)
+        {
+            if (servicio.CategoriaProducto.RequiereBar.HasValue)
+                return servicio.CategoriaProducto.RequiereBar.Value;
+            return !servicio.CategoriaProducto.RequiereCocina;
+        }
+        return false;
+    }
 
     public static bool FacturaServicioRequiereBar(FacturaServicio? linea) =>
         linea != null && ServicioRequiereBar(linea.Servicio);

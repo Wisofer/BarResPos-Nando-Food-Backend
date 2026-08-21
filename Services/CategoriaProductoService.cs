@@ -101,6 +101,7 @@ public class CategoriaProductoService : ICategoriaProductoService
         existente.IconoNombre = categoria.IconoNombre;
         existente.Orden = categoria.Orden;
         existente.RequiereCocina = categoria.RequiereCocina;
+        existente.RequiereBar = categoria.RequiereBar;
         existente.Activo = categoria.Activo;
 
         _context.SaveChanges();
