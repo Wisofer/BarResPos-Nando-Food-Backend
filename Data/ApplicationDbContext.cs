@@ -12,7 +12,17 @@ public class ApplicationDbContext : DbContext
         {
             if (args.CurrentState == System.Data.ConnectionState.Open)
             {
-                Database.ExecuteSqlRaw("PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 10000;");
+                try
+                {
+                    Database.ExecuteSqlRaw("PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 10000;");
+                }
+                catch { }
+
+                try
+                {
+                    Database.ExecuteSqlRaw("ALTER TABLE CategoriasProducto ADD COLUMN RequiereBar INTEGER NULL;");
+                }
+                catch { }
             }
         };
     }
@@ -69,6 +79,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.IconoNombre).HasMaxLength(100);
             entity.Property(e => e.Orden).HasDefaultValue(0);
             entity.Property(e => e.RequiereCocina).HasDefaultValue(true);
+            entity.Property(e => e.RequiereBar);
             entity.HasIndex(e => e.Nombre).IsUnique();
         });
 
