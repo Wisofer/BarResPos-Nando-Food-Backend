@@ -229,10 +229,10 @@ public class ReporteService : IReporteService
             .ToList();
     }
 
-    public async Task<List<ProductoTopReporte>> ObtenerProductosTopAsync(DateTime? desde, DateTime? hasta, int top, bool peores = false)
+    public async Task<List<ProductoTopReporte>> ObtenerProductosTopAsync(DateTime? desde, DateTime? hasta, int top, bool peores = false, string? orden = null, string? categoria = null)
     {
         var (fDesde, fHasta) = ResolverRango(desde, hasta, DateTime.Today.AddDays(-30));
-        var limit = Math.Min(Math.Max(top, 1), 100);
+        var limit = (top <= 0 || top >= 999) ? int.MaxValue : Math.Max(top, 1);
 
         var lineas = await _context.FacturaServicios.AsNoTracking()
             .Include(i => i.Factura)
@@ -244,6 +244,15 @@ public class ReporteService : IReporteService
             .ToListAsync();
 
         if (lineas.Count == 0) return new List<ProductoTopReporte>();
+
+        if (!string.IsNullOrWhiteSpace(categoria))
+        {
+            var catLower = categoria.Trim().ToLower();
+            lineas = lineas.Where(l => 
+                (l.Servicio?.CategoriaProducto?.Nombre ?? l.Servicio?.Categoria ?? "").ToLower().Contains(catLower)
+            ).ToList();
+            if (lineas.Count == 0) return new List<ProductoTopReporte>();
+        }
 
         var facturaIds = lineas.Select(l => l.FacturaId).Distinct().ToHashSet();
         var pagosBatch = await _context.Pagos.AsNoTracking()
@@ -272,11 +281,21 @@ public class ReporteService : IReporteService
                 Producto = g.First().Nombre
             });
 
-        var topProductos = (peores 
-                ? queryProductos.OrderBy(x => x.Cantidad) 
-                : queryProductos.OrderByDescending(x => x.Cantidad))
-            .Take(limit)
-            .ToList();
+        string modoOrden = (orden ?? "").Trim().ToLower();
+        if (string.IsNullOrEmpty(modoOrden))
+        {
+            modoOrden = peores ? "menos_vendidos" : "mas_vendidos";
+        }
+
+        var ordered = modoOrden switch
+        {
+            "menos_vendidos" => queryProductos.OrderBy(x => x.Cantidad),
+            "mayor_ingreso" => queryProductos.OrderByDescending(x => x.Venta),
+            "menor_ingreso" => queryProductos.OrderBy(x => x.Venta),
+            _ => queryProductos.OrderByDescending(x => x.Cantidad) // mas_vendidos
+        };
+
+        var topProductos = ordered.Take(limit).ToList();
 
         var result = new List<ProductoTopReporte>();
         foreach (var p in topProductos)

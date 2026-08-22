@@ -489,18 +489,20 @@ public class PedidosApiController : BaseApiController
         if (pedido.Estado == SD.EstadoOrdenPagado || pedido.Estado == SD.EstadoOrdenCancelado)
             return FailResponse("No se puede enviar a cocina un pedido pagado o cancelado.", StatusCodes.Status409Conflict);
 
-        var lineasCocina = CocinaCatalogoHelper.LineasCocina(pedido.FacturaServicios);
-        var lineasBar = CocinaCatalogoHelper.LineasBar(pedido.FacturaServicios);
+        var lineasCocina = CocinaCatalogoHelper.LineasCocina(pedido.FacturaServicios).ToList();
+        var lineasBar = CocinaCatalogoHelper.LineasBar(pedido.FacturaServicios).ToList();
+        var lineasSoloCobro = pedido.FacturaServicios
+            .Where(l => !CocinaCatalogoHelper.FacturaServicioRequiereCocina(l) 
+                     && !CocinaCatalogoHelper.FacturaServicioRequiereBar(l))
+            .ToList();
 
-        bool tieneCocina = lineasCocina.Any();
-        bool tieneBar = lineasBar.Any();
-
-        if (!tieneCocina && !tieneBar)
-            return FailResponse("El pedido no tiene artículos para cocina ni bar.", StatusCodes.Status400BadRequest);
+        bool tieneCocina = lineasCocina.Count > 0;
+        bool tieneBar = lineasBar.Count > 0;
 
         bool tienePendientesCocina = lineasCocina.Any(l => l.Estado == SD.EstadoCocinaPendiente);
         bool tienePendientesBar = lineasBar.Any(l => l.Estado == SD.EstadoCocinaPendiente);
-        bool tienePendientes = tienePendientesCocina || tienePendientesBar;
+        bool tienePendientesSoloCobro = lineasSoloCobro.Any(l => l.Estado == SD.EstadoCocinaPendiente);
+        bool tienePendientes = tienePendientesCocina || tienePendientesBar || tienePendientesSoloCobro;
 
         if (!tienePendientes)
         {
@@ -542,6 +544,12 @@ public class PedidosApiController : BaseApiController
                 item.Estado = SD.EstadoCocinaEnPreparacion;
                 item.FechaEnvioCocina = ahora;
             }
+        }
+
+        foreach (var item in lineasSoloCobro.Where(l => l.Estado == SD.EstadoCocinaPendiente))
+        {
+            item.Estado = SD.EstadoCocinaEnPreparacion;
+            item.FechaEnvioCocina = ahora;
         }
 
         SincronizarEstadosMesasPorPedido(pedido, pedido.MesaId);

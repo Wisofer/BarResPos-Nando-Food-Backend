@@ -137,11 +137,18 @@ public class ReportesApiController : BaseApiController
     }
 
     [HttpGet("productos-top")]
-    public async Task<IActionResult> ProductosTop([FromQuery] DateTime? desde, [FromQuery] DateTime? hasta, [FromQuery] int top = 10, [FromQuery] bool peores = false, [FromQuery] bool exportar = false)
+    public async Task<IActionResult> ProductosTop(
+        [FromQuery] DateTime? desde, 
+        [FromQuery] DateTime? hasta, 
+        [FromQuery] int top = 10, 
+        [FromQuery] bool peores = false, 
+        [FromQuery] string? orden = null,
+        [FromQuery] string? categoria = null,
+        [FromQuery] bool exportar = false)
     {
         try
         {
-            var items = await _reporteService.ObtenerProductosTopAsync(desde, hasta, top, peores);
+            var items = await _reporteService.ObtenerProductosTopAsync(desde, hasta, top, peores, orden, categoria);
             if (exportar)
             {
                 var fDesde = desde ?? DateTime.Today.AddDays(-30);
@@ -163,8 +170,13 @@ public class ReportesApiController : BaseApiController
         => ResumenVentas(desde, hasta, exportar: true, filtroVentas: "activas");
 
     [HttpGet("productos-top/excel")]
-    public Task<IActionResult> ProductosTopExcel([FromQuery] DateTime? desde, [FromQuery] DateTime? hasta, [FromQuery] int top = 10)
-        => ProductosTop(desde, hasta, top, exportar: true);
+    public Task<IActionResult> ProductosTopExcel(
+        [FromQuery] DateTime? desde, 
+        [FromQuery] DateTime? hasta, 
+        [FromQuery] int top = 10,
+        [FromQuery] string? orden = null,
+        [FromQuery] string? categoria = null)
+        => ProductosTop(desde, hasta, top, exportar: true, orden: orden, categoria: categoria);
 
     [HttpGet("ventas-por-mesero/excel")]
     public Task<IActionResult> VentasPorMeseroExcel([FromQuery] DateTime? desde, [FromQuery] DateTime? hasta)
