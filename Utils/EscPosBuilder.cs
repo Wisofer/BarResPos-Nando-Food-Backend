@@ -165,8 +165,11 @@ public class EscPosBuilder
 
     private byte[] SanitizeToAscii(string text)
     {
-        // Reemplazar acentos básicos para no romper impresoras configuradas en UTF8/ShiftJIS/PC437 arbitrariamente
-        string map = text
+        // 1. Limpiar Emojis (Surrogates y símbolos Unicode de emojis) para evitar basura '??' en la impresora
+        string noEmoji = System.Text.RegularExpressions.Regex.Replace(text, @"[\uD800-\uDBFF][\uDC00-\uDFFF]|\p{So}|\p{Cs}", "");
+
+        // 2. Reemplazar acentos básicos
+        string map = noEmoji
             .Replace("á", "a").Replace("é", "e").Replace("í", "i").Replace("ó", "o").Replace("ú", "u")
             .Replace("Á", "A").Replace("É", "E").Replace("Í", "I").Replace("Ó", "O").Replace("Ú", "U")
             .Replace("ñ", "n").Replace("Ñ", "N")
@@ -277,6 +280,60 @@ public class EscPosBuilder
             Console.WriteLine($"Error printing image: {ex.Message}");
         }
 
+        return this;
+    }
+
+    /// <summary>
+    /// Imprime un código de barras 1D (CODE39) centrado con texto HRI debajo.
+    /// Ideal para lectores de código de barras USB/Bluetooth en devoluciones.
+    /// </summary>
+    public EscPosBuilder PrintBarcode(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return this;
+
+        string sanitized = System.Text.RegularExpressions.Regex.Replace(content.Trim().ToUpperInvariant(), @"[^A-Z0-9\-\.\ \$\/\+\%]", "");
+        if (string.IsNullOrEmpty(sanitized)) return this;
+
+        byte[] textBytes = Encoding.ASCII.GetBytes(sanitized);
+
+        _buffer.AddRange(new byte[] {
+            0x1B, 0x61, 0x01,                   // Align Center
+            0x1D, 0x68, 0x40,                   // GS h 64 (Altura ~8mm)
+            0x1D, 0x77, 0x02,                   // GS w 2  (Ancho de barra)
+            0x1D, 0x48, 0x02,                   // GS H 2  (Texto HRI debajo del código)
+            0x1D, 0x66, 0x00,                   // GS f 0  (Fuente HRI A)
+            0x1D, 0x4B, 0x45, (byte)textBytes.Length // GS k 69 (CODE39) + longitud
+        });
+        _buffer.AddRange(textBytes);
+        _buffer.AddRange(new byte[] { 0x1B, 0x61, (byte)_currentAlignment }); // Restaurar alineación
+
+        _textBuffer.AppendLine($"[CÓDIGO DE BARRAS: {sanitized}]");
+        return this;
+    }
+
+    /// <summary>
+    /// Imprime un Código QR (2D) centrado.
+    /// </summary>
+    public EscPosBuilder PrintQrCode(string content)
+    {
+        if (string.IsNullOrWhiteSpace(content)) return this;
+        byte[] dataBytes = Encoding.UTF8.GetBytes(content.Trim());
+        int storeLen = dataBytes.Length + 3;
+
+        _buffer.AddRange(new byte[] {
+            0x1B, 0x61, 0x01, // Align Center
+            0x1D, 0x28, 0x6B, 0x04, 0x00, 0x31, 0x41, 0x32, 0x00, // Modelo 2
+            0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x43, 0x05,       // Tamaño módulo 5
+            0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x45, 0x31,       // Nivel de corrección M
+            0x1D, 0x28, 0x6B, (byte)(storeLen % 256), (byte)(storeLen / 256), 0x31, 0x80, 0x30
+        });
+        _buffer.AddRange(dataBytes);
+        _buffer.AddRange(new byte[] {
+            0x1D, 0x28, 0x6B, 0x03, 0x00, 0x31, 0x51, 0x30,       // Imprimir símbolo QR
+            0x1B, 0x61, (byte)_currentAlignment                // Restaurar alineación
+        });
+
+        _textBuffer.AppendLine($"[CÓDIGO QR: {content}]");
         return this;
     }
 }

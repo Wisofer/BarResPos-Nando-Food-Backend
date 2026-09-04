@@ -553,6 +553,14 @@ public class ImpresionService : IImpresionService
            .PrintColumns("VUELTO:", $"C${pago.Vuelto:N2}")
            .DrawDivider();
 
+        // Imprimir Código de Barras de la factura para escaneo directo en devoluciones
+        if (!string.IsNullOrWhiteSpace(orden.Numero))
+        {
+            esc.AlignCenter()
+               .PrintBarcode(orden.Numero)
+               .FeedLines(1);
+        }
+
         ConstruirPiePagina(esc, esDelivery ? "¡Gracias por su pedido!" : "¡Gracias por su visita!");
         return esc;
     }

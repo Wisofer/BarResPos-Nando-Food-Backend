@@ -1,7 +1,7 @@
 @echo off
-chcp 65001 > nul
-title BarResPos - Herramienta de Limpieza de Ventas Demo para Produccion
+title BarResPos - Limpieza de Ventas Demo
 
+cls
 echo ====================================================================
 echo   BarResPos - REINICIO DE SISTEMA A PRIMERA VENTA DE PRODUCCION
 echo ====================================================================
@@ -16,97 +16,35 @@ echo   - Se liberaran todas las mesas (Estado: Libre).
 echo.
 echo  SE CONSERVARAN INTACTOS:
 echo   - Todos los Productos, Precios y Fotos.
-echo   - Todas las Categorias y Destinos de Comanda (Cocina, Bar, Solo Cobro).
+echo   - Todas las Categorias y Destinos de Comanda.
 echo   - El Plano de Mesas y Ubicaciones.
 echo   - Todos los Usuarios y Claves.
 echo   - Las Configuraciones del Restaurante e Impresoras.
 echo.
 echo ====================================================================
 echo.
-set /p confirm="¿Esta seguro que desea reiniciar todas las ventas? (S/N): "
+set /p confirm="Desea reiniciar todas las ventas de prueba? (S/N): "
 
-if /i "%confirm%" NEQ "S" (
-    echo.
-    echo  Operacion cancelada por el usuario. No se realizaron cambios.
-    echo.
-    pause
-    exit /b
-)
+if /i "%confirm%"=="S" goto :ejecutar
+if /i "%confirm%"=="SI" goto :ejecutar
 
 echo.
-echo  Buscando base de datos SQLite...
+echo  Operacion cancelada. No se modifico la base de datos.
+echo.
+pause
+exit /b
 
-set DB_PATH=barrestpos.db
-
-if not exist "%DB_PATH%" (
-    if exist "BarRestPOS.db" (
-        set DB_PATH=BarRestPOS.db
-    ) else (
-        if exist "%LOCALAPPDATA%\BarRestPOS\barrestpos.db" (
-            set DB_PATH=%LOCALAPPDATA%\BarRestPOS\barrestpos.db
-        )
-    )
-)
-
-if not exist "%DB_PATH%" (
-    echo.
-    echo  [ERROR]: No se encontro el archivo de base de datos (%DB_PATH%).
-    echo  Por favor ejecuta este script en la carpeta donde esta el sistema backend.
-    echo.
-    pause
-    exit /b
-)
-
-echo  Base de datos encontrada en: %DB_PATH%
-echo  Ejecutando limpieza de tablas de ventas...
+:ejecutar
+echo.
+echo  Deteniendo ejecucion del sistema y realizando limpieza profunda...
 echo.
 
-powershell -NoProfile -Command ^
-    "$db = '%DB_PATH%';" ^
-    "$query = \" " ^
-    "  PRAGMA foreign_keys = OFF; " ^
-    "  DELETE FROM FacturaServicioOpcionesSeleccion; " ^
-    "  DELETE FROM FacturaServicios; " ^
-    "  DELETE FROM PagoFacturas; " ^
-    "  DELETE FROM Pagos; " ^
-    "  DELETE FROM Facturas; " ^
-    "  DELETE FROM CierresCaja; " ^
-    "  DELETE FROM MovimientosInventario; " ^
-    "  DELETE FROM RegistrosAuditoria; " ^
-    "  UPDATE Mesas SET Estado = 'Libre'; " ^
-    "  DELETE FROM sqlite_sequence WHERE name IN ('Facturas', 'FacturaServicios', 'Pagos', 'PagoFacturas', 'CierresCaja', 'MovimientosInventario', 'RegistrosAuditoria', 'FacturaServicioOpcionesSeleccion'); " ^
-    "  PRAGMA foreign_keys = ON; " ^
-    "  VACUUM; " ^
-    "\"; " ^
-    "try { " ^
-    "  $conn = New-Object System.Data.SQLite.SQLiteConnection(\"Data Source=$db;Version=3;\"); " ^
-    "  $conn.Open(); " ^
-    "  $cmd = $conn.CreateCommand(); " ^
-    "  $cmd.CommandText = $query; " ^
-    "  $cmd.ExecuteNonQuery(); " ^
-    "  $conn.Close(); " ^
-    "  Write-Host '  [OK] Limpieza ejecutada exitosamente mediante SQLite ADO.NET Driver.' -ForegroundColor Green; " ^
-    "} catch { " ^
-    "  try { " ^
-    "    Add-Type -Assembly 'System.Data'; " ^
-    "    $connStr = \"Data Source=$db\"; " ^
-    "    $conn = New-Object -TypeName Microsoft.Data.Sqlite.SqliteConnection -ArgumentList $connStr; " ^
-    "    $conn.Open(); " ^
-    "    $cmd = $conn.CreateCommand(); " ^
-    "    $cmd.CommandText = $query; " ^
-    "    $cmd.ExecuteNonQuery(); " ^
-    "    $conn.Close(); " ^
-    "    Write-Host '  [OK] Limpieza ejecutada exitosamente mediante Microsoft.Data.Sqlite.' -ForegroundColor Green; " ^
-    "  } catch { " ^
-    "    $psExec = \"& sqlite3 '$db' '$query'\"; " ^
-    "    Invoke-Expression $psExec; " ^
-    "    Write-Host '  [OK] Limpieza ejecutada mediante cliente SQLite.' -ForegroundColor Green; " ^
-    "  } " ^
-    "}"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-Process -Name 'BarRestPOS','dotnet','electron' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1; $appData = [Environment]::GetFolderPath('ApplicationData'); $localData = [Environment]::GetFolderPath('LocalApplicationData'); $db1 = Join-Path $appData 'BarRestPOS\barrestpos.db'; $db2 = Join-Path $localData 'BarRestPOS\barrestpos.db'; $db3 = 'barrestpos.db'; $db4 = 'BarRestPOS.db'; $rutas = @($db1, $db2, $db3, $db4); $encontradas = @(); foreach ($r in $rutas) { if (Test-Path $r) { $encontradas += $r } }; $more = Get-ChildItem -Path $PSScriptRoot -Filter '*barrestpos*.db' -Recurse -ErrorAction SilentlyContinue; if ($more) { foreach ($m in $more) { if ($encontradas -notcontains $m.FullName) { $encontradas += $m.FullName } } }; if ($encontradas.Count -eq 0) { Write-Host '[ERROR] No se encontro ninguna base de datos barrestpos.db' -ForegroundColor Red; exit 1 }; $csharp = 'using System; using System.Runtime.InteropServices; public class WinSqlite { [DllImport(\"winsqlite3.dll\", EntryPoint=\"sqlite3_open\", CallingConvention=CallingConvention.Cdecl)] public static extern int sqlite3_open(string filename, out IntPtr db); [DllImport(\"winsqlite3.dll\", EntryPoint=\"sqlite3_exec\", CallingConvention=CallingConvention.Cdecl)] public static extern int sqlite3_exec(IntPtr db, string sql, IntPtr callback, IntPtr arg, out IntPtr errmsg); [DllImport(\"winsqlite3.dll\", EntryPoint=\"sqlite3_close\", CallingConvention=CallingConvention.Cdecl)] public static extern int sqlite3_close(IntPtr db); public static string RunSafe(string path) { IntPtr db; if (sqlite3_open(path, out db) != 0) return \"Error abriendo DB\"; IntPtr err; string[] tables = new string[] { \"OrdenLineaOpciones\", \"FacturaServicioOpcionesSeleccion\", \"FacturaServicios\", \"PagoFacturas\", \"Pagos\", \"Facturas\", \"CierresCaja\", \"MovimientosInventario\", \"ClienteServicios\", \"RefreshTokens\", \"RegistrosAuditoria\" }; sqlite3_exec(db, \"PRAGMA foreign_keys = OFF;\", IntPtr.Zero, IntPtr.Zero, out err); foreach (string t in tables) { sqlite3_exec(db, \"DELETE FROM \" + t + \";\", IntPtr.Zero, IntPtr.Zero, out err); sqlite3_exec(db, \"DELETE FROM sqlite_sequence WHERE name=\x27\" + t + \"\x27;\", IntPtr.Zero, IntPtr.Zero, out err); } sqlite3_exec(db, \"UPDATE Mesas SET Estado=\x27Libre\x27;\", IntPtr.Zero, IntPtr.Zero, out err); sqlite3_exec(db, \"PRAGMA foreign_keys = ON;\", IntPtr.Zero, IntPtr.Zero, out err); sqlite3_exec(db, \"PRAGMA wal_checkpoint(TRUNCATE);\", IntPtr.Zero, IntPtr.Zero, out err); sqlite3_exec(db, \"VACUUM;\", IntPtr.Zero, IntPtr.Zero, out err); sqlite3_close(db); return \"OK\"; } }'; Add-Type -TypeDefinition $csharp -ErrorAction Stop; foreach ($dbPath in $encontradas) { Write-Host '  [+] Limpiando base de datos:' $dbPath -ForegroundColor Yellow; $res = [WinSqlite]::RunSafe($dbPath); if ($res -eq 'OK') { Write-Host '  [OK] LIMPIEZA EXITOSA EN:' $dbPath -ForegroundColor Green } else { Write-Host '  [ERROR]:' $res -ForegroundColor Red } }"
 
 echo.
 echo ====================================================================
-echo   ¡SISTEMA REINICIADO Y LISTO PARA LA PRIMERA VENTA EN PRODUCCION!
+echo   ¡LIMPIEZA COMPLETADA CON EXITO!
+echo   Por favor abre la aplicacion BarResPos (o presiona F5 en el navegador).
 echo ====================================================================
 echo.
 pause
